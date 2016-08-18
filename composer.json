@@ -1,0 +1,26 @@
+{
+
+  "name": "tbollmeier/webappfound",
+  "version": "0.4.0",
+  "description": "Various helper classes for a MVC based webapp",
+
+  "authors": [
+    {
+      "name": "Thomas Bollmeier",
+      "homepage": "http://tbollmeier.de"
+    }
+  ],
+
+  "license": "Apache-2.0",
+
+  "require": {
+    "php": "^7.0"
+  },
+
+  "autoload": {
+    "psr-4": {
+      "tbollmeier\\webappfound\\": "src/"
+    }
+  }
+
+}
