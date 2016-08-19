@@ -20,11 +20,13 @@ namespace tbollmeier\webappfound;
 
 class Template
 {
-
-    const TEMPLATE_DIR = __DIR__ . DIRECTORY_SEPARATOR . '..'
-    . DIRECTORY_SEPARATOR . 'template';
-
+    private static $templateDir = '';
     private $template;
+
+    public static function setTemplateDir($templateDir)
+    {
+        self::$templateDir = $templateDir;
+    }
 
     public function __construct($template)
     {
@@ -33,7 +35,11 @@ class Template
 
     public function getHtml($data=[])
     {
-        $path = self::TEMPLATE_DIR . DIRECTORY_SEPARATOR . $this->template;
+        $path = !empty(self::$templateDir) ?
+            self::$templateDir . DIRECTORY_SEPARATOR :
+            '';
+        $path .= $this->template;
+
         extract($data);
 
         ob_start();

@@ -26,6 +26,37 @@ abstract class Model
     protected $id;
     protected $row;
 
+    public static function query(\PDO $dbConn, $options=[])
+    {
+        $objects = [];
+
+        $filter = $options['filter'] ?? '';
+        $orderBy = $options['orderBy'] ?? '';
+        $params = $options['params'] ?? [];
+
+        $tableName = (new static())->tableName;
+        $sql = 'SELECT * FROM ' . $tableName;
+        if (!empty($filter)) {
+            $sql .= ' WHERE ' . $filter;
+        }
+        if (!empty($orderBy)) {
+            $sql .= ' ORDER BY ' . $orderBy;
+        }
+
+        $stmt = $dbConn->prepare($sql);
+        $stmt->execute($params);
+
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        while ($row) {
+            $obj = new static($row['id']);
+            $obj->setRowData($row);
+            $objects[] = $obj;
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        return $objects;
+    }
+
     public function __construct(int $id=-1)
     {
         $this->id = intval($id);
@@ -46,8 +77,8 @@ abstract class Model
 
     protected function setDbField($name, $options=[])
     {
-        $dbName = isset($options['dbAlias']) ? $options['dbAlias'] : $name;
-        $pdoType = isset($options['pdoType']) ? $options['pdoType'] : \PDO::PARAM_STR;
+        $dbName = $options['dbAlias'] ?? $name;
+        $pdoType = $options['pdoType'] ?? \PDO::PARAM_STR;
         $this->fields[$name] = [$dbName, $pdoType];
     }
 
@@ -58,8 +89,7 @@ abstract class Model
 
     public function __get($name)
     {
-        $field = isset($this->fields[$name]) ?
-            $this->fields[$name] : [$name, \PDO::PARAM_STR];
+        $field = $this->fields[$name] ?? [$name, \PDO::PARAM_STR];
         $dbName = $field[0];
 
         if (isset($this->row[$dbName])) {
@@ -71,9 +101,9 @@ abstract class Model
 
     public function __set($name, $value)
     {
-        $field = isset($this->fields[$name]) ?
-            $this->fields[$name] : [$name, \PDO::PARAM_STR];
+        $field = $this->fields[$name] ?? [$name, \PDO::PARAM_STR];
         $dbName = $field[0];
+
         $this->row[$dbName] = $value;
     }
 
@@ -87,7 +117,7 @@ abstract class Model
         $stmt = $dbConn->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
-        $row = $stmt->fetch();
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         if ($row) {
             $this->setRowData($row);
         }
