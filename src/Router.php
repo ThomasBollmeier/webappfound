@@ -71,11 +71,11 @@ class Router
      * Register multiple action routes
      *
      * @param $routeData string String of route information
-     *                          in format "HTTP_METHOD URL Controller.Action <newline>..."
+     *                          in format "HTTP_METHOD URL Controller.Action, ..."
      */
     public function registerActions($routeData)
     {
-        $lines = explode('\n', $routeData);
+        $lines = explode(',', $routeData);
 
         foreach ($lines as $line) {
 
