@@ -67,6 +67,31 @@ class Router
         call_user_func([$ctrl, $this->defaultAction], []);
     }
 
+    /**
+     * Register multiple action routes
+     *
+     * @param $routeData string String of route information
+     *                          in format "HTTP_METHOD URL Controller.Action <newline>..."
+     */
+    public function registerActions($routeData)
+    {
+        $lines = explode('\n', $routeData);
+
+        foreach ($lines as $line) {
+
+            $args = explode(' ', $line);
+            $args = array_filter($args, function ($arg) {
+                return !empty(trim($arg));
+            });
+
+            if (count($args) == 3) {
+                list($method, $route, $controllerAction) = $args;
+                $this->registerAction($method, $route, $controllerAction);
+            }
+
+        }
+    }
+
     public function registerAction($method,
                                    $route,
                                    $controllerAction)
