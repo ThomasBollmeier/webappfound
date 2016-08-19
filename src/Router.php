@@ -80,10 +80,13 @@ class Router
         foreach ($lines as $line) {
 
             $args = explode(' ', $line);
+            $args = array_map(function($arg) {
+                return trim($arg);
+            }, $args);
             $args = array_filter($args, function ($arg) {
-                return !empty(trim($arg));
+                return !empty($arg);
             });
-
+            
             if (count($args) == 3) {
                 list($method, $route, $controllerAction) = $args;
                 $this->registerAction($method, $route, $controllerAction);
