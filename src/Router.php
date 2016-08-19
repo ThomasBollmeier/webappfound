@@ -86,7 +86,7 @@ class Router
             $args = array_filter($args, function ($arg) {
                 return !empty($arg);
             });
-            
+
             if (count($args) == 3) {
                 list($method, $route, $controllerAction) = $args;
                 $this->registerAction($method, $route, $controllerAction);

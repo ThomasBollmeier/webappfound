@@ -54,6 +54,8 @@ abstract class Model
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         }
 
+        $stmt->closeCursor();
+
         return $objects;
     }
 
