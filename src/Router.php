@@ -45,7 +45,9 @@ class Router
 
     public function route($method, $url)
     {
-        $handlers = $this->handlers[$method];
+        $handlers = isset($this->handlers[$method]) ?
+            $this->handlers[$method] :
+            [];
 
         foreach ($handlers as $handler) {
             list($pattern, $params, $controller, $action) = $handler;
@@ -104,10 +106,11 @@ class Router
         $route = '/' . trim($this->baseUrl, '/') . '/' . ltrim($route, '/');
         list($pattern, $params) = $this->parseRoute($route);
 
-        $handlers = $this->handlers[$method];
+        $handlers = isset($this->handlers[$method]) ?
+            $this->handlers[$method] :
+            [];
         $handlers[] = [$pattern, $params, $controller, $action];
         $this->handlers[$method] = $handlers;
-
     }
 
     private function parseRoute($route)

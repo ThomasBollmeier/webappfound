@@ -15,35 +15,38 @@
    limitations under the License.
 */
 
-namespace tbollmeier\webappfound;
+namespace tbollmeier\webappfound\db;
 
-abstract class Model
+
+abstract class ActiveRecord
 {
     const INDEX_NOT_IN_DB = -1;
+
+    private static $dbConn;
 
     protected $tableName;
     protected $fields;
     protected $id;
     protected $row;
+    protected $sqlBuilder;
 
-    public static function query(\PDO $dbConn, $options=[])
+    public static function setDbConnection(\PDO $dbConn)
+    {
+        self::$dbConn = $dbConn;
+    }
+
+    public static function query($options=[])
     {
         $objects = [];
 
-        $filter = $options['filter'] ?? '';
-        $orderBy = $options['orderBy'] ?? '';
         $params = $options['params'] ?? [];
 
-        $tableName = (new static())->tableName;
-        $sql = 'SELECT * FROM ' . $tableName;
-        if (!empty($filter)) {
-            $sql .= ' WHERE ' . $filter;
-        }
-        if (!empty($orderBy)) {
-            $sql .= ' ORDER BY ' . $orderBy;
-        }
+        $model = new static();
+        $sql = $model->sqlBuilder->createSelectCommand(
+            $model->tableName,
+            $options);
 
-        $stmt = $dbConn->prepare($sql);
+        $stmt = self::$dbConn->prepare($sql);
         $stmt->execute($params);
 
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -59,17 +62,23 @@ abstract class Model
         return $objects;
     }
 
-    public function __construct(int $id=-1)
+    public function __construct(int $id=-1, $sqlBuilder=null)
     {
         $this->id = intval($id);
         $this->tableName = '';
         $this->row = [];
         $this->fields = [];
+        $this->sqlBuilder = $sqlBuilder ?? new SqlBuilder();
     }
 
     public function getId()
     {
         return $this->id;
+    }
+
+    public function isInDb()
+    {
+        return $this->id != self::INDEX_NOT_IN_DB;
     }
 
     protected function setTableName($tableName)
@@ -109,14 +118,16 @@ abstract class Model
         $this->row[$dbName] = $value;
     }
 
-    public function load(\PDO $dbConn)
+    public function load()
     {
         if ($this->id == self::INDEX_NOT_IN_DB) {
             return;
         }
 
-        $sql = 'SELECT * FROM '.$this->tableName.' WHERE id = :id';
-        $stmt = $dbConn->prepare($sql);
+        $sql = $this->sqlBuilder->createSelectCommand(
+            $this->tableName,
+            ['filter' => 'id = :id']);
+        $stmt = self::$dbConn->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -126,13 +137,13 @@ abstract class Model
         $stmt->closeCursor();
     }
 
-    public function save(\PDO $dbConn)
+    public function save()
     {
         $sql = $this->id == self::INDEX_NOT_IN_DB ?
             $this->createPreparedInsert() :
             $this->createPreparedUpdate();
 
-        $stmt = $dbConn->prepare($sql);
+        $stmt = self::$dbConn->prepare($sql);
 
         $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
         $types = $this->getColumnInfo(self::COLUMN_INFO_TYPE);
@@ -151,19 +162,19 @@ abstract class Model
         $stmt->execute();
 
         if ($this->id == self::INDEX_NOT_IN_DB) {
-            $this->id = $dbConn->lastInsertId();
+            $this->id = self::$dbConn->lastInsertId();
         }
 
     }
 
-    public function delete(\PDO $dbConn)
+    public function delete()
     {
         if ($this->id == self::INDEX_NOT_IN_DB) {
             return;
         }
 
-        $sql = 'DELETE FROM '.$this->tableName.' WHERE id = :id';
-        $stmt = $dbConn->prepare($sql);
+        $sql = $this->sqlBuilder->createDeleteCommand($this->tableName);
+        $stmt = self::$dbConn->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
 
@@ -175,37 +186,15 @@ abstract class Model
     private function createPreparedInsert()
     {
         $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
-        $namesStr = implode(', ', $names);
 
-        $params = array_map(function($name) {
-            return ':'.$name;
-        }, $names);
-        $paramsStr = implode(', ', $params);
-
-        $sql = 'INSERT INTO ' . $this->tableName . ' (';
-        $sql .= $namesStr . ') VALUES (' . $paramsStr . ')';
-
-        return $sql;
+        return $this->sqlBuilder->createInsertCommand($this->tableName, $names);
     }
 
     private function createPreparedUpdate()
     {
         $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
 
-        $sql = 'UPDATE ' . $this->tableName . ' SET ';
-
-        $numCols = count($names);
-        for ($col = 0; $col<$numCols; $col++) {
-            if ($col > 0) {
-                $sql .= ', ';
-            }
-            $sql .= $names[$col] . ' = :' . $names[$col];
-        }
-
-        $sql .= ' WHERE id = :id';
-
-        return $sql;
-
+        return $this->sqlBuilder->createUpdateCommand($this->tableName, $names);
     }
 
     const COLUMN_INFO_NAME = 1;
