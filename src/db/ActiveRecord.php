@@ -23,12 +23,8 @@ abstract class ActiveRecord
     const INDEX_NOT_IN_DB = -1;
 
     private static $dbConn;
-
-    protected $tableName;
-    protected $fields;
     protected $id;
-    protected $row;
-    protected $sqlBuilder;
+    protected $_state;
 
     public static function setDbConnection(\PDO $dbConn)
     {
@@ -42,8 +38,8 @@ abstract class ActiveRecord
         $params = $options['params'] ?? [];
 
         $model = new static();
-        $sql = $model->sqlBuilder->createSelectCommand(
-            $model->tableName,
+        $sql = $model->_state->sqlBuilder->createSelectCommand(
+            $model->_state->tableName,
             $options);
 
         $stmt = self::$dbConn->prepare($sql);
@@ -62,13 +58,17 @@ abstract class ActiveRecord
         return $objects;
     }
 
-    public function __construct(int $id=-1, $sqlBuilder=null)
+    public function __construct(int $id = self::INDEX_NOT_IN_DB,
+                                $sqlBuilder = null)
     {
         $this->id = intval($id);
-        $this->tableName = '';
-        $this->row = [];
-        $this->fields = [];
-        $this->sqlBuilder = $sqlBuilder ?? new SqlBuilder();
+
+        $this->_state = new \stdClass();
+        $this->_state->tableName = '';
+        $this->_state->row = [];
+        $this->_state->fields = [];
+        $this->_state->sqlBuilder = $sqlBuilder ?? new SqlBuilder();
+        $this->_state->loaded = false;
     }
 
     public function getId()
@@ -83,28 +83,35 @@ abstract class ActiveRecord
 
     protected function setTableName($tableName)
     {
-        $this->tableName = $tableName;
+        $this->_state->tableName = $tableName;
     }
 
     protected function setDbField($name, $options=[])
     {
         $dbName = $options['dbAlias'] ?? $name;
         $pdoType = $options['pdoType'] ?? \PDO::PARAM_STR;
-        $this->fields[$name] = [$dbName, $pdoType];
+        $this->_state->fields[$name] = [$dbName, $pdoType];
     }
 
     protected function setRowData($row)
     {
-        $this->row = $row;
+        $this->_state->row = $row;
+        if ($this->id != self::INDEX_NOT_IN_DB) {
+            $this->_state->loaded = true;
+        }
     }
 
     public function __get($name)
     {
-        $field = $this->fields[$name] ?? [$name, \PDO::PARAM_STR];
+        if (!$this->_state->loaded) {
+            $this->load();
+        }
+
+        $field = $this->_state->fields[$name] ?? [$name, \PDO::PARAM_STR];
         $dbName = $field[0];
 
-        if (isset($this->row[$dbName])) {
-            return $this->row[$dbName];
+        if (isset($this->_state->row[$dbName])) {
+            return $this->_state->row[$dbName];
         } else {
             return null;
         }
@@ -112,20 +119,22 @@ abstract class ActiveRecord
 
     public function __set($name, $value)
     {
-        $field = $this->fields[$name] ?? [$name, \PDO::PARAM_STR];
+        $field = $this->_state->fields[$name] ?? [$name, \PDO::PARAM_STR];
         $dbName = $field[0];
 
-        $this->row[$dbName] = $value;
+        $this->_state->row[$dbName] = $value;
     }
 
     public function load()
     {
+        $this->_state->loaded = true;
+
         if ($this->id == self::INDEX_NOT_IN_DB) {
             return;
         }
 
-        $sql = $this->sqlBuilder->createSelectCommand(
-            $this->tableName,
+        $sql = $this->_state->sqlBuilder->createSelectCommand(
+            $this->_state->tableName,
             ['filter' => 'id = :id']);
         $stmt = self::$dbConn->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
@@ -135,6 +144,7 @@ abstract class ActiveRecord
             $this->setRowData($row);
         }
         $stmt->closeCursor();
+
     }
 
     public function save()
@@ -152,7 +162,7 @@ abstract class ActiveRecord
             $name = $names[$col];
             $stmt->bindParam(
                 ':'.$name,
-                $this->row[$name],
+                $this->_state->row[$name],
                 $types[$col]);
         }
         if ($this->id != self::INDEX_NOT_IN_DB) {
@@ -173,12 +183,13 @@ abstract class ActiveRecord
             return;
         }
 
-        $sql = $this->sqlBuilder->createDeleteCommand($this->tableName);
+        $sql = $this->_state->sqlBuilder->createDeleteCommand(
+            $this->_state->tableName);
         $stmt = self::$dbConn->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
 
-        $this->row = [];
+        $this->_state->row = [];
         $this->id = self::INDEX_NOT_IN_DB;
 
     }
@@ -187,25 +198,26 @@ abstract class ActiveRecord
     {
         $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
 
-        return $this->sqlBuilder->createInsertCommand($this->tableName, $names);
+        return $this->_state->sqlBuilder->createInsertCommand(
+            $this->_state->tableName, $names);
     }
 
     private function createPreparedUpdate()
     {
         $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
 
-        return $this->sqlBuilder->createUpdateCommand($this->tableName, $names);
+        return $this->_state->sqlBuilder->createUpdateCommand(
+            $this->_state->tableName, $names);
     }
 
     const COLUMN_INFO_NAME = 1;
-    const COLUMN_INFO_VALUE = 2;
-    const COLUMN_INFO_TYPE = 3;
+    const COLUMN_INFO_TYPE = 2;
 
     private function getColumnInfo($infoType) {
 
         $info = [];
 
-        foreach ($this->fields as $name => $data) {
+        foreach ($this->_state->fields as $name => $data) {
             $colName = $data[0];
             if ($this->$name === null) {
                 continue;
@@ -213,9 +225,6 @@ abstract class ActiveRecord
             switch ($infoType) {
                 case self::COLUMN_INFO_NAME:
                     $info[] = $colName;
-                    break;
-                case self::COLUMN_INFO_VALUE:
-                    $info[] = $this->$colName;
                     break;
                 case self::COLUMN_INFO_TYPE:
                     $info[] = $data[1];
