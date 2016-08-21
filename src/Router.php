@@ -29,44 +29,84 @@ class Router
 
     public function __construct($options)
     {
-        $this->controllerNS = $this->getOption($options, 'controllerNS', '');
-        $defaultCtrlAction = $this->getOption($options, 'defaultCtrlAction', 'Index.index');
+        $this->controllerNS = $options['controllerNS'] ?? '';
+        $defaultCtrlAction = $options['defaultCtrlAction'] ?? 'Index.index';
         list($defaultCtrl, $defaultAction) = explode('.', $defaultCtrlAction);
         $this->defaultCtrl = $this->controllerNS . '\\' . $defaultCtrl;
         $this->defaultAction = $defaultAction;
-        $this->baseUrl = $this->getOption($options, 'baseUrl', '');
+        $this->baseUrl = $options['baseUrl'] ?? '';
         $this->handlers = [];
     }
 
-    private function getOption($opts, $name, $default=null)
-    {
-        return isset($opts[$name]) ? $opts[$name] : $default;
-    }
-
+    /**
+     * Route url to controller action
+     *
+     * @param string $method HTTP method ('GET, 'PUT', etc.)
+     * @param string $url URL to be parsed (including query string)
+     */
     public function route($method, $url)
     {
+        // separate url path and query parameters:
+        $urlInfo = parse_url($url);
+        $url = $urlInfo['path'];
+        $query = $urlInfo['query'] ?? '';
+        $queryParams = [];
+        if (!empty($query)) {
+            parse_str($query, $queryParams);
+        }
+
         $handlers = isset($this->handlers[$method]) ?
             $this->handlers[$method] :
             [];
+
+        $urlParams = [];
 
         foreach ($handlers as $handler) {
             list($pattern, $params, $controller, $action) = $handler;
             $controller = $this->controllerNS . '\\' . $controller;
             if (preg_match($pattern, $url, $matches)) {
-                $data = [];
                 $numParams = count($params);
                 for ($paramIdx=0; $paramIdx < $numParams; $paramIdx++) {
-                    $data[$params[$paramIdx]] = $matches[$paramIdx+1];
+                    $urlParams[$params[$paramIdx]] = $matches[$paramIdx+1];
                 }
-                $ctrl = new $controller();
-                call_user_func([$ctrl, $action], $data);
+                $this->callAction(
+                    new $controller(),
+                    $action,
+                    $urlParams,
+                    $queryParams);
                 return;
             }
         }
 
         // Fallback:
-        $ctrl = new $this->defaultCtrl();
-        call_user_func([$ctrl, $this->defaultAction], []);
+        $this->callAction(
+            new $this->defaultCtrl(),
+            $this->defaultAction,
+            $urlParams,
+            $queryParams);
+    }
+
+    private function callAction($controller, $action, $urlParams, $queryParams)
+    {
+        $method = new \ReflectionMethod($controller, $action);
+        $numRequired = $method->getNumberOfRequiredParameters();
+        if ($numRequired > 2) {
+            throw new \Exception('Not all arguments given!');
+        }
+        $numParams = $method->getNumberOfParameters();
+        switch ($numParams) {
+            case 0:
+                $args = [];
+                break;
+            case 1:
+                $args = [$urlParams];
+                break;
+            case 2:
+                $args = [$urlParams, $queryParams];
+                break;
+        }
+
+        call_user_func_array([$controller, $action], $args);
     }
 
     /**
