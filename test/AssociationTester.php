@@ -15,39 +15,38 @@
    limitations under the License.
 */
 
-namespace tbollmeier\webappfound;
+use tbollmeier\webappfound\db as db;
 
 
-class Template
+class Person extends db\ActiveRecord
 {
-    private static $templateDir = '';
-    private $template;
-
-    public static function setTemplateDir($templateDir)
+    public function __construct($id=self::INDEX_NOT_IN_DB)
     {
-        self::$templateDir = $templateDir;
-    }
+        parent::__construct($id);
 
-    public function __construct($template)
+        $this->defineTable('people');
+        $this->defineField('name');
+        $this->defineField('firstName', ['dbAlias' => 'first_name']);
+
+        //$this->defineAssoc('hobbies', ...);
+    }
+}
+
+class Hobby extends db\ActiveRecord
+{
+    public function __construct($id=self::INDEX_NOT_IN_DB)
     {
-        $this->template = $template;
-    }
+        parent::__construct($id);
 
-    public function getHtml($data=[])
+        $this->defineTable('hobbies');
+        $this->defineField('name');
+    }
+}
+
+class AssociationTester extends PHPUnit_Framework_TestCase
+{
+    public function setUp()
     {
-        $path = !empty(self::$templateDir) ?
-            self::$templateDir . DIRECTORY_SEPARATOR :
-            '';
-        $path .= $this->template;
 
-        extract($data);
-
-        ob_start();
-        require($path);
-        $html = ob_get_contents();
-        ob_end_clean();
-
-        return $html;
     }
-
 }

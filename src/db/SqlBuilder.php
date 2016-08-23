@@ -58,10 +58,12 @@ class SqlBuilder
 
     public function createSelectCommand($tableName, $options)
     {
+        $fields = $options['fields'] ?? [];
         $filter = $options['filter'] ?? '';
         $orderBy = $options['orderBy'] ?? '';
 
-        $sql = 'SELECT * FROM ' . $tableName;
+        $fieldsStr = empty($fields) ? '*' : implode(', ', $fields);
+        $sql = 'SELECT ' . $fieldsStr . ' FROM ' . $tableName;
         if (!empty($filter)) {
             $sql .= ' WHERE ' . $filter;
         }

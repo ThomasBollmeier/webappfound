@@ -28,9 +28,15 @@ class Connector
      */
     public function createConfigConnection($configFile)
     {
+        $options = $this->parseConfigFile($configFile);
+
+        return $this->createConnection($options);
+    }
+
+    public function createConnection($options)
+    {
         try {
-            
-            $options = $this->parseConfigFile($configFile);
+
             $dsn = $this->composeDSN($options);
             $user = $options['user'];
             $password = $options['password'];
@@ -40,6 +46,7 @@ class Connector
         } catch (\Exception $error) {
             return false;
         }
+
     }
 
     private function parseConfigFile($configFile)

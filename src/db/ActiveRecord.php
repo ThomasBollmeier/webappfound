@@ -24,6 +24,7 @@ abstract class ActiveRecord
 
     private static $dbConn;
     protected $id;
+    protected $_meta;
     protected $_state;
 
     public static function setDbConnection(\PDO $dbConn)
@@ -31,20 +32,16 @@ abstract class ActiveRecord
         self::$dbConn = $dbConn;
     }
 
-    public static function query($options=[])
+    public static function query($options = [])
     {
         $objects = [];
-
         $params = $options['params'] ?? [];
-
         $model = new static();
-        $sql = $model->_state->sqlBuilder->createSelectCommand(
-            $model->_state->tableName,
+        $sql = $model->_meta->sqlBuilder->createSelectCommand(
+            $model->_meta->tableName,
             $options);
-
         $stmt = self::$dbConn->prepare($sql);
         $stmt->execute($params);
-
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         while ($row) {
             $obj = new static($row['id']);
@@ -52,9 +49,7 @@ abstract class ActiveRecord
             $objects[] = $obj;
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         }
-
         $stmt->closeCursor();
-
         return $objects;
     }
 
@@ -62,12 +57,14 @@ abstract class ActiveRecord
                                 $sqlBuilder = null)
     {
         $this->id = intval($id);
+        $this->_meta = new \stdClass();
+        $this->_meta->tableName = '';
+        $this->_meta->fields = [];
+        $this->_meta->assocs = [];
+        $this->_meta->sqlBuilder = $sqlBuilder ?? new SqlBuilder();
 
         $this->_state = new \stdClass();
-        $this->_state->tableName = '';
         $this->_state->row = [];
-        $this->_state->fields = [];
-        $this->_state->sqlBuilder = $sqlBuilder ?? new SqlBuilder();
         $this->_state->loaded = false;
     }
 
@@ -78,19 +75,43 @@ abstract class ActiveRecord
 
     public function isInDb()
     {
-        return $this->id != self::INDEX_NOT_IN_DB;
+        return $this->id != self::INDEX_NOT_IN_DB; // todo: SELECT...
     }
 
-    protected function setTableName($tableName)
+    protected function defineTable($tableName)
     {
-        $this->_state->tableName = $tableName;
+        $this->_meta->tableName = $tableName;
     }
 
-    protected function setDbField($name, $options=[])
+    protected function defineField($name, $options = [])
     {
         $dbName = $options['dbAlias'] ?? $name;
         $pdoType = $options['pdoType'] ?? \PDO::PARAM_STR;
-        $this->_state->fields[$name] = [$dbName, $pdoType];
+        $this->_meta->fields[$name] = [$dbName, $pdoType];
+
+        $this->_state->row[$dbName] = null;
+    }
+
+    protected function defineAssoc($assocName,
+                                   $targetClass,
+                                   $isComposition = false,
+                                   $linkData = [])
+    {
+        $linkTable = $linkData['linkTable'] ?? ''; // TODO name
+        $sourceIdField = $linkData['sourceIdField'] ?? 'source_id'; // TODO name
+        $targetIdField = $linkData['targetIdField'] ?? 'target_id'; // TODO name
+
+        $this->_meta->assocs[$assocName] = [
+            'targetClass' => $targetClass,
+            'isComposition' => $isComposition,
+            'linkTable' => $linkTable,
+            'sourceIdField' => $sourceIdField,
+            'targetIdField' => $targetIdField
+        ];
+
+        $loaded = false;
+        $objects = [];
+        $this->_state->assocs[$assocName] = [$loaded, $objects];
     }
 
     protected function setRowData($row)
@@ -107,22 +128,42 @@ abstract class ActiveRecord
             $this->load();
         }
 
-        $field = $this->_state->fields[$name] ?? [$name, \PDO::PARAM_STR];
-        $dbName = $field[0];
+        if (isset($this->_meta->fields[$name])) {
 
-        if (isset($this->_state->row[$dbName])) {
-            return $this->_state->row[$dbName];
+            // It's a property
+            $field = $this->_meta->fields[$name];
+            $dbName = $field[0];
+            return $this->_state->row[$dbName] ?? null;
+
+        } elseif ($this->_meta->assocs[$name]) {
+
+            // It's an association
+            return $this->_state->assocs[$name];
+
         } else {
+
             return null;
+
         }
+
     }
 
     public function __set($name, $value)
     {
-        $field = $this->_state->fields[$name] ?? [$name, \PDO::PARAM_STR];
-        $dbName = $field[0];
 
-        $this->_state->row[$dbName] = $value;
+        if (isset($this->_meta->fields[$name])) {
+
+            // It's a property
+            $field = $this->_meta->fields[$name];
+            $dbName = $field[0];
+            $this->_state->row[$dbName] = $value;
+
+        } elseif ($this->_meta->assocs[$name]) {
+
+            // It's an association
+            $this->_state->assocs[$name] = $value;
+
+        }
     }
 
     public function load()
@@ -133,35 +174,82 @@ abstract class ActiveRecord
             return;
         }
 
-        $sql = $this->_state->sqlBuilder->createSelectCommand(
-            $this->_state->tableName,
+        $sql = $this->_meta->sqlBuilder->createSelectCommand(
+            $this->_meta->tableName,
             ['filter' => 'id = :id']);
         $stmt = self::$dbConn->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+
         $stmt->execute();
+
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         if ($row) {
             $this->setRowData($row);
         }
+
         $stmt->closeCursor();
 
+        $this->loadAssociations();
+    }
+
+    private function loadAssociations()
+    {
+        $assocNames = array_keys($this->_meta->assocs);
+        foreach ($assocNames as $assocName) {
+            $this->loadAssociation($assocName);
+        }
+    }
+
+    private function loadAssociation($assocName)
+    {
+        $this->_state->assocs[$assocName] = $this->readAssocObjects($assocName);
+    }
+
+    private function readAssocObjects($assocName)
+    {
+        $linkData = $this->_meta->assocs[$assocName];
+        $linkTable = $linkData['linkTable'];
+        $sourceId = $linkData['sourceIdField'];
+        $targetId = $linkData['targetIdField'];
+        $targetClass = $linkData['targetClass'];
+
+        $sql = $this->_meta->sqlBuilder->createSelectCommand(
+            $linkTable,
+            [
+                'fields' => [$targetId],
+                'filter' => $sourceId . ' = :id'
+            ]);
+        $stmt = self::$dbConn->prepare($sql);
+        $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $objects = [];
+
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        while ($row) {
+            $objects[] = new $targetClass($row[$targetId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+        $stmt->closeCursor();
+
+        return $objects;
     }
 
     public function save()
     {
-        $sql = $this->id == self::INDEX_NOT_IN_DB ?
+        $isNew = !$this->isInDb();
+        $sql = $isNew ?
             $this->createPreparedInsert() :
             $this->createPreparedUpdate();
-
         $stmt = self::$dbConn->prepare($sql);
 
-        $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
-        $types = $this->getColumnInfo(self::COLUMN_INFO_TYPE);
+        $names = $this->getColumnInfo([$this, 'getColName']);
+        $types = $this->getColumnInfo([$this, 'getColName']);
         $numCols = count($names);
-        for ($col=0; $col<$numCols; $col++) {
+        for ($col = 0; $col < $numCols; $col++) {
             $name = $names[$col];
             $stmt->bindParam(
-                ':'.$name,
+                ':' . $name,
                 $this->_state->row[$name],
                 $types[$col]);
         }
@@ -171,8 +259,33 @@ abstract class ActiveRecord
 
         $stmt->execute();
 
-        if ($this->id == self::INDEX_NOT_IN_DB) {
+        if ($isNew) {
             $this->id = self::$dbConn->lastInsertId();
+        }
+
+        $this->saveAssociations();
+    }
+
+    private function saveAssociations()
+    {
+        $assocNames = array_keys($this->_meta->assocs);
+        foreach ($assocNames as $assocName) {
+            $this->saveAssociation($assocName);
+        }
+    }
+
+    private function saveAssociation($assocName)
+    {
+        $linkData = $this->_meta->assocs[$assocName];
+        $linkTable = $linkData['linkTable'];
+        $sourceId = $linkData['sourceIdField'];
+        $targetId = $linkData['targetIdField'];
+        $targetClass = $linkData['targetClass'];
+
+        $existingObjects = $this->readAssocObjects($assocName);
+        $existingIds = [];
+        foreach ($existingObjects as $obj) {
+            $existingIds[$obj->getId()] = true;
         }
 
     }
@@ -182,58 +295,52 @@ abstract class ActiveRecord
         if ($this->id == self::INDEX_NOT_IN_DB) {
             return;
         }
-
-        $sql = $this->_state->sqlBuilder->createDeleteCommand(
-            $this->_state->tableName);
+        $sql = $this->_meta->sqlBuilder->createDeleteCommand(
+            $this->_meta->tableName);
         $stmt = self::$dbConn->prepare($sql);
+
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+
         $stmt->execute();
 
         $this->_state->row = [];
         $this->id = self::INDEX_NOT_IN_DB;
-
     }
 
     private function createPreparedInsert()
     {
-        $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
-
-        return $this->_state->sqlBuilder->createInsertCommand(
-            $this->_state->tableName, $names);
+        $names = $this->getColumnInfo([$this, 'getColName']);
+        return $this->_meta->sqlBuilder->createInsertCommand(
+            $this->_meta->tableName, $names);
     }
 
     private function createPreparedUpdate()
     {
-        $names = $this->getColumnInfo(self::COLUMN_INFO_NAME);
-
-        return $this->_state->sqlBuilder->createUpdateCommand(
-            $this->_state->tableName, $names);
+        $names = $this->getColumnInfo([$this, 'getColName']);
+        return $this->_meta->sqlBuilder->createUpdateCommand(
+            $this->_meta->tableName, $names);
     }
 
-    const COLUMN_INFO_NAME = 1;
-    const COLUMN_INFO_TYPE = 2;
-
-    private function getColumnInfo($infoType) {
-
+    private function getColumnInfo($columnDataFn)
+    {
         $info = [];
-
-        foreach ($this->_state->fields as $name => $data) {
-            $colName = $data[0];
+        foreach ($this->_meta->fields as $name => $data) {
             if ($this->$name === null) {
                 continue;
             }
-            switch ($infoType) {
-                case self::COLUMN_INFO_NAME:
-                    $info[] = $colName;
-                    break;
-                case self::COLUMN_INFO_TYPE:
-                    $info[] = $data[1];
-                    break;
-            }
+            $info[] = $columnDataFn != null ? $columnDataFn($data) : $data;
         }
-
         return $info;
+    }
 
+    private function getColName($col)
+    {
+        return $col[0];
+    }
+
+    private function getColType($col)
+    {
+        return $col[1];
     }
 
 }
