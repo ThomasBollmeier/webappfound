@@ -28,7 +28,11 @@ class Person extends db\ActiveRecord
         $this->defineField('name');
         $this->defineField('firstName', ['dbAlias' => 'first_name']);
 
-        //$this->defineAssoc('hobbies', ...);
+        $this->defineAssoc('hobbies', 'Hobby', true, [
+            'linkTable' => 'people_hobbies',
+            'sourceIdField' => 'person_id',
+            'targetIdField' => 'hobby_id'
+        ]);
     }
 }
 
@@ -45,8 +49,50 @@ class Hobby extends db\ActiveRecord
 
 class AssociationTester extends PHPUnit_Framework_TestCase
 {
+    private $dbConn;
+
     public function setUp()
     {
+        $connector = new db\Connector();
+        $this->dbConn = $connector->createConnection([
+            'dbname' => 'waftest',
+            'user' => 'waftester',
+            'password' => ''
+        ]);
+
+        $this->assertNotNull($this->dbConn);
+        $this->assertTrue($this->dbConn !== false);
+
+        db\ActiveRecord::setDbConnection($this->dbConn);
 
     }
+
+    public function tearDown()
+    {
+        if ($this->dbConn) {
+            unset($this->dbConn);
+        }
+    }
+
+    public function testLoadAssociation() {
+
+        $people = Person::query([
+            'filter' => 'name = :name',
+            'params' => [':name' => 'Mustermann']
+        ]);
+        $this->assertEquals(count($people), 1);
+
+        $person = $people[0];
+
+        $hobbyNames = array_map(function ($hobby) {
+            return $hobby->name;
+        }, $person->hobbies);
+        sort($hobbyNames);
+
+        $this->assertEquals(2, count($hobbyNames));
+        $this->assertEquals($hobbyNames[0], 'Laufen');
+        $this->assertEquals($hobbyNames[1], 'Programmieren');
+
+    }
+
 }

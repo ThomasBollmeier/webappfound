@@ -66,6 +66,7 @@ abstract class ActiveRecord
         $this->_state = new \stdClass();
         $this->_state->row = [];
         $this->_state->loaded = false;
+        $this->_state->assocsLoaded = false;
     }
 
     public function getId()
@@ -137,6 +138,10 @@ abstract class ActiveRecord
 
         } elseif ($this->_meta->assocs[$name]) {
 
+            if (!$this->_state->assocsLoaded) {
+                $this->loadAssociations();
+            }
+
             // It's an association
             return $this->_state->assocs[$name];
 
@@ -198,6 +203,8 @@ abstract class ActiveRecord
         foreach ($assocNames as $assocName) {
             $this->loadAssociation($assocName);
         }
+
+        $this->_state->assocsLoaded = true;
     }
 
     private function loadAssociation($assocName)

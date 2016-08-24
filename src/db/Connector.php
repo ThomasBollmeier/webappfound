@@ -37,6 +37,8 @@ class Connector
     {
         try {
 
+            $this->applyDefaults($options);
+
             $dsn = $this->composeDSN($options);
             $user = $options['user'];
             $password = $options['password'];
@@ -60,6 +62,11 @@ class Connector
         $convertIntoAssoc = true;
         $options = json_decode($content, $convertIntoAssoc);
 
+        return $options;
+    }
+
+    private function applyDefaults(&$options) {
+
         $defaults = [
             'type' => 'mysql',
             'host' => 'localhost',
@@ -73,7 +80,6 @@ class Connector
             }
         }
 
-        return $options;
     }
 
     private function composeDSN($options)
