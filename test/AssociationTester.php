@@ -95,4 +95,58 @@ class AssociationTester extends PHPUnit_Framework_TestCase
 
     }
 
+    public function testSaveAssociation()
+    {
+
+        $people = Person::query([
+            'filter' => 'name = :name',
+            'params' => [':name' => 'Mustermann']
+        ]);
+        $this->assertEquals(count($people), 1);
+
+        $person = $people[0];
+
+        $newHobby = new Hobby();
+        $newHobby->name = 'Literatur';
+        $hobbies = $person->hobbies;
+        $hobbies[] = $newHobby;
+        $person->hobbies = $hobbies;
+
+        $person->save();
+
+        $people = Person::query([
+            'filter' => 'name = :name',
+            'params' => [':name' => 'Mustermann']
+        ]);
+        $this->assertEquals(count($people), 1);
+
+        $person = $people[0];
+        $hobbies = $person->hobbies;
+
+        $this->assertEquals(count($hobbies), 3);
+
+        $changedHobbies = [];
+        foreach ($hobbies as $hobby) {
+            if ($hobby->name == 'Literatur') {
+                continue;
+            }
+            $changedHobbies[] = $hobby;
+        }
+        $person->hobbies = $changedHobbies;
+
+        $person->save();
+
+        $people = Person::query([
+            'filter' => 'name = :name',
+            'params' => [':name' => 'Mustermann']
+        ]);
+        $this->assertEquals(count($people), 1);
+
+        $person = $people[0];
+        $hobbies = $person->hobbies;
+
+        $this->assertEquals(count($hobbies), 2);
+
+    }
+
 }

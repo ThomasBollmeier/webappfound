@@ -76,7 +76,22 @@ abstract class ActiveRecord
 
     public function isInDb()
     {
-        return $this->id != self::INDEX_NOT_IN_DB; // todo: SELECT...
+        if ($this->id != self::INDEX_NOT_IN_DB) {
+
+            $sql = 'SELECT id FROM ' . $this->_meta->tableName;
+            $sql .= ' WHERE id = :id';
+            $stmt = self::$dbConn->prepare($sql);
+            $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            return $result !== false;
+
+        } else {
+            return false;
+        }
     }
 
     protected function defineTable($tableName)
@@ -251,7 +266,7 @@ abstract class ActiveRecord
         $stmt = self::$dbConn->prepare($sql);
 
         $names = $this->getColumnInfo([$this, 'getColName']);
-        $types = $this->getColumnInfo([$this, 'getColName']);
+        $types = $this->getColumnInfo([$this, 'getColType']);
         $numCols = count($names);
         for ($col = 0; $col < $numCols; $col++) {
             $name = $names[$col];
@@ -288,6 +303,7 @@ abstract class ActiveRecord
         $sourceId = $linkData['sourceIdField'];
         $targetId = $linkData['targetIdField'];
         $targetClass = $linkData['targetClass'];
+        $isComposition = $linkData['isComposition'];
 
         $existingObjects = $this->readAssocObjects($assocName);
         $existingIds = [];
@@ -295,13 +311,78 @@ abstract class ActiveRecord
             $existingIds[$obj->getId()] = true;
         }
 
+        $assocObjs = $this->_state->assocs[$assocName];
+
+        foreach ($assocObjs as $obj) {
+            $objId = $obj->getId();
+            if (array_key_exists($objId, $existingIds)) {
+                // Delete orphaned links:
+                if (!$obj->isInDb()) {
+                    $this->deleteLink($linkTable, $sourceId, $targetId, $objId);
+                }
+                unset($existingIds[$objId]);
+            } else {
+
+                // New association object...
+                // If the associated objects does not exist yet it must be
+                // saved now:
+                if (!$obj->isInDb()) {
+                    $obj->save();
+                }
+
+                // Insert new link
+                $sql = 'INSERT INTO ' . $linkTable . ' (';
+                $sql .= $sourceId . ', ' . $targetId . ') ';
+                $sql .= 'VALUES (:source_id, :target_id)';
+                $stmt = self::$dbConn->prepare($sql);
+                $objId = $obj->getId();
+                $stmt->bindParam(':source_id', $this->id, \PDO::PARAM_INT);
+                $stmt->bindParam(':target_id', $objId, \PDO::PARAM_INT);
+                $stmt->execute();
+            }
+        }
+
+        // Delete unused links:
+        foreach ($existingIds as $objId => $val) {
+            $this->deleteLink($linkTable, $sourceId, $targetId, $objId);
+            if ($isComposition) {
+                $obj = new $targetClass($objId);
+                $obj->delete();
+            }
+        }
+
+    }
+
+    private function deleteLink($linkTable,
+                                $sourceId,
+                                $targetId,
+                                $objId)
+    {
+        $sql = 'DELETE FROM ' . $linkTable;
+        $sql .= ' WHERE ' . $sourceId . ' = :source_id AND ';
+        $sql .= $targetId . ' = :target_id';
+        $stmt = self::$dbConn->prepare($sql);
+        $stmt->bindParam(':source_id', $this->id, \PDO::PARAM_INT);
+        $stmt->bindParam(':target_id', $objId, \PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    private function deleteAssociations()
+    {
+        $assocNames = array_keys($this->_meta->assocs);
+        foreach ($assocNames as $assocName) {
+            $this->_state[$assocName] = [];
+            $this->saveAssociation($assocName);
+        }
+
     }
 
     public function delete()
     {
-        if ($this->id == self::INDEX_NOT_IN_DB) {
+        if (!$this->isInDb()) {
             return;
         }
+
         $sql = $this->_meta->sqlBuilder->createDeleteCommand(
             $this->_meta->tableName);
         $stmt = self::$dbConn->prepare($sql);
@@ -311,6 +392,9 @@ abstract class ActiveRecord
         $stmt->execute();
 
         $this->_state->row = [];
+
+        $this->deleteAssociations();
+
         $this->id = self::INDEX_NOT_IN_DB;
     }
 
