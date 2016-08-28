@@ -65,6 +65,7 @@ abstract class ActiveRecord
 
         $this->_state = new \stdClass();
         $this->_state->row = [];
+        $this->_state->assocs = [];
         $this->_state->loaded = false;
         $this->_state->assocsLoaded = false;
     }
@@ -116,18 +117,18 @@ abstract class ActiveRecord
         $linkTable = $linkData['linkTable'] ?? ''; // TODO name
         $sourceIdField = $linkData['sourceIdField'] ?? 'source_id'; // TODO name
         $targetIdField = $linkData['targetIdField'] ?? 'target_id'; // TODO name
+        $onDeleteCallback = $linkData['onDeleteCallback'] ?? null;
 
         $this->_meta->assocs[$assocName] = [
             'targetClass' => $targetClass,
             'isComposition' => $isComposition,
             'linkTable' => $linkTable,
             'sourceIdField' => $sourceIdField,
-            'targetIdField' => $targetIdField
+            'targetIdField' => $targetIdField,
+            'onDeleteCallback' => $onDeleteCallback
         ];
 
-        $loaded = false;
-        $objects = [];
-        $this->_state->assocs[$assocName] = [$loaded, $objects];
+        $this->_state->assocs[$assocName] = [];
     }
 
     protected function setRowData($row)
@@ -173,12 +174,20 @@ abstract class ActiveRecord
 
         if (isset($this->_meta->fields[$name])) {
 
+            if (!$this->_state->loaded) {
+                $this->load();
+            }
+
             // It's a property
             $field = $this->_meta->fields[$name];
             $dbName = $field[0];
             $this->_state->row[$dbName] = $value;
 
-        } elseif ($this->_meta->assocs[$name]) {
+        } elseif (isset($this->_meta->assocs[$name])) {
+
+            if (!$this->_state->assocsLoaded) {
+                $this->loadAssociations();
+            }
 
             // It's an association
             $this->_state->assocs[$name] = $value;
@@ -214,9 +223,15 @@ abstract class ActiveRecord
 
     private function loadAssociations()
     {
-        $assocNames = array_keys($this->_meta->assocs);
-        foreach ($assocNames as $assocName) {
-            $this->loadAssociation($assocName);
+        if ($this->_state->assocsLoaded) {
+            return; // nothing to do
+        }
+
+        if ($this->isInDb()) {
+            $assocNames = array_keys($this->_meta->assocs);
+            foreach ($assocNames as $assocName) {
+                $this->loadAssociation($assocName);
+            }
         }
 
         $this->_state->assocsLoaded = true;
@@ -260,11 +275,12 @@ abstract class ActiveRecord
     public function save()
     {
         $isNew = !$this->isInDb();
+
         $sql = $isNew ?
             $this->createPreparedInsert() :
             $this->createPreparedUpdate();
-        $stmt = self::$dbConn->prepare($sql);
 
+        $stmt = self::$dbConn->prepare($sql);
         $names = $this->getColumnInfo([$this, 'getColName']);
         $types = $this->getColumnInfo([$this, 'getColType']);
         $numCols = count($names);
@@ -304,6 +320,7 @@ abstract class ActiveRecord
         $targetId = $linkData['targetIdField'];
         $targetClass = $linkData['targetClass'];
         $isComposition = $linkData['isComposition'];
+        $onDeleteCallback = $linkData['onDeleteCallback'];
 
         $existingObjects = $this->readAssocObjects($assocName);
         $existingIds = [];
@@ -348,6 +365,9 @@ abstract class ActiveRecord
             if ($isComposition) {
                 $obj = new $targetClass($objId);
                 $obj->delete();
+            } elseif ($onDeleteCallback !== null) {
+                $obj = new $targetClass($objId);
+                call_user_func($onDeleteCallback, $obj);
             }
         }
 
@@ -371,7 +391,7 @@ abstract class ActiveRecord
     {
         $assocNames = array_keys($this->_meta->assocs);
         foreach ($assocNames as $assocName) {
-            $this->_state[$assocName] = [];
+            $this->_state->assocs[$assocName] = [];
             $this->saveAssociation($assocName);
         }
 
