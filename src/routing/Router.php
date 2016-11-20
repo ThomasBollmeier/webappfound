@@ -15,7 +15,7 @@
    limitations under the License.
 */
 
-namespace tbollmeier\webappfound;
+namespace tbollmeier\webappfound\routing;
 
 
 class Router
