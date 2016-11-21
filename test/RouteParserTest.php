@@ -10,14 +10,18 @@ class RouteParserTest extends TestCase
     function testParseSuccess()
     {
         $code = <<<CODE
-(controller Home :default
+(controller HomeController :default
     (actions 
-        index []
-        show []))
+        index [get / :default]
+        show [get /]))
 
-(controller TodoItem
+(controller TodoController
     (actions 
-        index []))
+        index [get /my-todos]
+        show [get /my-todos/:item_id(int)]
+        create [post /my-todos]
+        change [put /my-todos/:item_id(int)]
+        destroy [delete /my-todos/:item_id(int)]))
 CODE;
 
         $parser = new RouteParser();
