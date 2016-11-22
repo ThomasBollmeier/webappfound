@@ -62,11 +62,6 @@ class RouteParser
             $name = new parsian\Ast("name", $tokens[0]->getContent());
             $ast->addChild($name);
 
-            if ($parser->checkFor("COLON", "DEFAULT")) {
-                $ast->addChild(new parsian\Ast("default"));
-                $parser->consumeMany(2);
-            }
-
             $ast->addChild($this->actions($parser));
 
             $parser->consumeExpected("PAR_CLOSE");
@@ -110,17 +105,8 @@ class RouteParser
     {
         $parser->consumeExpected("SQB_OPEN");
 
-        $token = $parser->consume();
-        switch ($token->getType()) {
-            case "GET":
-            case "POST":
-            case "PUT":
-            case "DELETE":
-                $ast->addChild(new parsian\Ast("method", $token->getContent()));
-                break;
-            default:
-                throw new \Exception("Parse error");
-        }
+        $tokens = $parser->consumeExpected(["GET", "POST", "PUT", "DELETE"]);
+        $ast->addChild(new parsian\Ast("method", $tokens[0]->getContent()));
 
         $this->url($parser, $ast);
 

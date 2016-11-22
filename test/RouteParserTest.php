@@ -10,7 +10,7 @@ class RouteParserTest extends TestCase
     function testParseSuccess()
     {
         $code = <<<CODE
-(controller HomeController :default
+(controller HomeController
     (actions 
         index [get / :default]
         show [get /]))
@@ -33,7 +33,8 @@ CODE;
         $children = $ast->getChildren();
         $this->assertEquals(2, count($children));
 
-        echo $ast->toXml();
+        $element = new SimpleXMLElement($ast->toXml());
+        print_r($element->asXML());
 
     }
 
