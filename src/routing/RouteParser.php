@@ -22,13 +22,30 @@ use tbollmeier\parsian as parsian;
 
 class RouteParser
 {
+    const PAR_OPEN = "PAR_OPEN";
+    const PAR_CLOSE = "PAR_CLOSE";
+    const SQB_OPEN = "SQB_OPEN";
+    const SQB_CLOSE = "SQB_CLOSE";
+    const SLASH = "SLASH";
+    const COLON = "COLON";
+    const CONTROLLER = "CONTROLLER";
+    const ACTIONS = "ACTIONS";
+    const DEFAULT = "DEFAULT";
+    const GET = "GET";
+    const POST = "POST";
+    const PUT = "PUT";
+    const DELETE = "DELETE";
+    const STRING = "STRING";
+    const INT = "INT";
+    const ID ="ID";
+    const URL_PART = "URL_PART";
 
-    public function parseFile($filePath)
+    public function parseFile(string $filePath) : parsian\Ast
     {
         return $this->parse(new parsian\FileCharInput($filePath));
     }
 
-    public function parseString($code)
+    public function parseString(string $code) : parsian\Ast
     {
         return $this->parse(new parsian\StringCharInput($code));
     }
@@ -56,7 +73,7 @@ class RouteParser
 
             $ast = new parsian\Ast("controller");
 
-            $parser->consumeExpected("PAR_OPEN", "CONTROLLER");
+            $parser->consumeExpected(self::PAR_OPEN, self::CONTROLLER);
 
             $tokens = $parser->consumeExpected("ID");
             $name = new parsian\Ast("name", $tokens[0]->getContent());
@@ -64,7 +81,7 @@ class RouteParser
 
             $ast->addChild($this->actions($parser));
 
-            $parser->consumeExpected("PAR_CLOSE");
+            $parser->consumeExpected(self::PAR_CLOSE);
 
             return $ast;
 
@@ -78,14 +95,14 @@ class RouteParser
     {
         $ast = new parsian\Ast("actions");
 
-        $parser->consumeExpected("PAR_OPEN", "ACTIONS");
+        $parser->consumeExpected(self::PAR_OPEN, self::ACTIONS);
 
-        while ($parser->checkFor("ID")) {
+        while ($parser->checkFor(self::ID)) {
             $action = $this->action($parser);
             $ast->addChild($action);
         }
 
-        $parser->consumeExpected("PAR_CLOSE");
+        $parser->consumeExpected(self::PAR_CLOSE);
 
         return $ast;
     }
@@ -93,7 +110,7 @@ class RouteParser
     private function action(parsian\Parser $parser)
     {
         $ast = new parsian\Ast("action");
-        $tokens = $parser->consumeExpected("ID");
+        $tokens = $parser->consumeExpected(self::ID);
         $ast->addChild(new parsian\Ast("name", $tokens[0]->getContent()));
 
         $this->route($parser, $ast);
@@ -103,19 +120,19 @@ class RouteParser
 
     private function route(parsian\Parser $parser, parsian\Ast $ast)
     {
-        $parser->consumeExpected("SQB_OPEN");
+        $parser->consumeExpected(self::SQB_OPEN);
 
-        $tokens = $parser->consumeExpected(["GET", "POST", "PUT", "DELETE"]);
+        $tokens = $parser->consumeExpected([self::GET, self::POST, self::PUT, self::DELETE]);
         $ast->addChild(new parsian\Ast("method", $tokens[0]->getContent()));
 
         $this->url($parser, $ast);
 
-        if ($parser->checkFor("DEFAULT")) {
+        if ($parser->checkFor(self::DEFAULT)) {
             $parser->consume();
             $ast->addChild(new parsian\Ast("default"));
         }
 
-        $parser->consumeExpected("SQB_CLOSE");
+        $parser->consumeExpected(self::SQB_CLOSE);
     }
 
     private function url(parsian\Parser $parser, parsian\Ast $ast)
@@ -123,11 +140,11 @@ class RouteParser
         $url = new parsian\Ast("url");
         $ast->addChild($url);
 
-        if ($parser->checkFor("SLASH")) {
+        if ($parser->checkFor(self::SLASH)) {
             $url->addChild(new parsian\Ast("absolute"));
             $parser->consume();
         }
-        $expected = ["ID", "URL_PART", "COLON"];
+        $expected = [self::ID, self::URL_PART, self::COLON];
 
         while ($tokens = $parser->checkFor($expected)) {
 
@@ -136,17 +153,17 @@ class RouteParser
 
             $parser->consume();
 
-            if ($ttype == "SLASH") {
-                $expected = ["ID", "URL_PART", "COLON"];
-            } elseif ($ttype == "ID" || $ttype == "URL_PART") {
+            if ($ttype == self::SLASH) {
+                $expected = [self::ID, self::URL_PART, self::COLON];
+            } elseif ($ttype == self::ID || $ttype == self::URL_PART) {
                 $url->addChild(new parsian\Ast("url_part", $token->getContent()));
-                $expected = ["SLASH"];
+                $expected = [self::SLASH];
             } else { // Colon can start parameter or default keyword
-                if ($parser->checkFor("DEFAULT")) {
+                if ($parser->checkFor(self::DEFAULT)) {
                     break; // <-- url is parsed
                 }
                 $url->addChild($this->param($parser));
-                $expected = ["SLASH"];
+                $expected = [self::SLASH];
             }
 
         }
@@ -157,14 +174,13 @@ class RouteParser
     {
         $ast = new parsian\Ast("param");
 
-        $tokens = $parser->consumeExpected(["ID", "URL_PART"]);
+        $tokens = $parser->consumeExpected([self::ID, self::URL_PART]);
         $ast->addChild(new parsian\Ast("name", $tokens[0]->getContent()));
 
-        if ($parser->checkFor("PAR_OPEN")) {
+        if ($parser->checkFor(self::PAR_OPEN)) {
             $parser->consume();
-            $tokens = $parser->consumeExpected(["STRING", "INT"], "PAR_CLOSE");
+            $tokens = $parser->consumeExpected([self::STRING, self::INT], self::PAR_CLOSE);
             $ast->addChild(new parsian\Ast("type", $tokens[0]->getContent()));
-
         } else {
             $ast->addChild(new parsian\Ast("type", "string"));
         }
@@ -178,12 +194,12 @@ class RouteParser
 
         $lexer->addCommentType(";", "\n");
 
-        $lexer->addSymbol("(", "PAR_OPEN");
-        $lexer->addSymbol(")", "PAR_CLOSE");
-        $lexer->addSymbol("[", "SQB_OPEN");
-        $lexer->addSymbol("]", "SQB_CLOSE");
-        $lexer->addSymbol("/", "SLASH");
-        $lexer->addSymbol(":", "COLON");
+        $lexer->addSymbol("(", self::PAR_OPEN);
+        $lexer->addSymbol(")", self::PAR_CLOSE);
+        $lexer->addSymbol("[", self::SQB_OPEN);
+        $lexer->addSymbol("]", self::SQB_CLOSE);
+        $lexer->addSymbol("/", self::SLASH);
+        $lexer->addSymbol(":", self::COLON);
 
         $lexer->addKeyword("controller");
         $lexer->addKeyword("actions");
@@ -195,8 +211,8 @@ class RouteParser
         $lexer->addKeyword("string");
         $lexer->addKeyword("int");
 
-        $lexer->addTerminal("/[a-zA-z_][a-zA-z_0-9]*/", "ID");
-        $lexer->addTerminal("#[^/]*#", "URL_PART");
+        $lexer->addTerminal("/[a-zA-z_][a-zA-z_0-9]*/", self::ID);
+        $lexer->addTerminal("#[^/]*#", self::URL_PART);
 
         return $lexer;
     }

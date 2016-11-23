@@ -17,6 +17,8 @@
 
 namespace tbollmeier\webappfound\routing;
 
+use tbollmeier\parsian\Ast;
+
 
 class Router
 {
@@ -107,6 +109,90 @@ class Router
         }
 
         call_user_func_array([$controller, $action], $args);
+    }
+
+    public function registerActionsFromDSL($filePathOrCode)
+    {
+        $parser = new RouteParser();
+
+        if (file_exists($filePathOrCode)) {
+            $ast = $parser->parseFile($filePathOrCode);
+        } else {
+            $ast = $parser->parseString($filePathOrCode);
+        }
+
+        $controllers = $ast->getChildren();
+        foreach ($controllers as $controller) {
+            $this->compileController($controller);
+        }
+
+
+    }
+
+    private function compileController(Ast $controller)
+    {
+        $name = "";
+
+        foreach ($controller->getChildren() as $child)
+        {
+            switch ($child->getName()) {
+                case "name":
+                    $name = $child->getContent();
+                    break;
+                case "actions":
+                    $this->compileActions($name, $child);
+            }
+        }
+    }
+
+    private function compileActions(string $controllerName, Ast $actions)
+    {
+        foreach ($actions->getChildren() as $action) {
+            $this->compileAction($controllerName, $action);
+        }
+    }
+
+    private function compileAction(string $controllerName, Ast $action)
+    {
+        $actionName = "";
+        $httpMethod = "";
+        $pattern = "";
+        $params = [];
+
+        foreach ($action->getChildren() as $child) {
+            switch ($child->getName()) {
+                case "name":
+                    $actionName = $child->getContent();
+                    break;
+                case "method":
+                    $httpMethod = $child->getContent();
+                    break;
+                case "url":
+                    list($pattern, $params) = $this->compileUrl($child);
+                    break;
+                case "default":
+                    $this->defaultCtrl = $this->controllerNS . '\\' . $controllerName;
+                    $this->defaultAction = $actionName;
+                    break;
+            }
+        }
+
+        $handlers = isset($this->handlers[$httpMethod]) ?
+            $this->handlers[$httpMethod] :
+            [];
+        $handlers[] = [$pattern, $params, $controllerName, $actionName];
+        $this->handlers[$httpMethod] = $handlers;
+
+    }
+
+    private function compileUrl(Ast $url)
+    {
+        $pattern = "";
+        $params = [];
+
+        // TODO implement...
+
+        return [$pattern, $params];
     }
 
     /**

@@ -10,9 +10,11 @@ class RouteParserTest extends TestCase
     function testParseSuccess()
     {
         $code = <<<CODE
+;; Define route -> action mapping
+        
 (controller HomeController
     (actions 
-        index [get / :default]
+        index [get / :default] ;; <-- set as default
         show [get /]))
 
 (controller TodoController
