@@ -13,18 +13,9 @@
 
   "license": "Apache-2.0",
 
-  "repositories": [
-
-    {
-      "type": "vcs",
-      "url": "/home/drbolle/entwicklung/php/parsian"
-    }
-
-  ],
-
   "require": {
     "php": "^7.0",
-    "tbollmeier/parsian": "dev-master"
+    "tbollmeier/parsian": "0.98.0"
   },
 
   "require-dev": {

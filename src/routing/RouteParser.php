@@ -127,8 +127,8 @@ class RouteParser
 
         $this->url($parser, $ast);
 
-        if ($parser->checkFor(self::DEFAULT)) {
-            $parser->consume();
+        if ($parser->checkFor(self::COLON, self::DEFAULT)) {
+            $parser->consumeMany(2);
             $ast->addChild(new parsian\Ast("default"));
         }
 
@@ -151,17 +151,18 @@ class RouteParser
             $token = $tokens[0];
             $ttype = $token->getType();
 
-            $parser->consume();
-
             if ($ttype == self::SLASH) {
+                $parser->consume();
                 $expected = [self::ID, self::URL_PART, self::COLON];
             } elseif ($ttype == self::ID || $ttype == self::URL_PART) {
+                $parser->consume();
                 $url->addChild(new parsian\Ast("url_part", $token->getContent()));
                 $expected = [self::SLASH];
             } else { // Colon can start parameter or default keyword
                 if ($parser->checkFor(self::DEFAULT)) {
                     break; // <-- url is parsed
                 }
+                $parser->consume();
                 $url->addChild($this->param($parser));
                 $expected = [self::SLASH];
             }

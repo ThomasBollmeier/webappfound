@@ -137,7 +137,7 @@ class Router
         {
             switch ($child->getName()) {
                 case "name":
-                    $name = $child->getContent();
+                    $name = $child->getText();
                     break;
                 case "actions":
                     $this->compileActions($name, $child);
@@ -162,10 +162,10 @@ class Router
         foreach ($action->getChildren() as $child) {
             switch ($child->getName()) {
                 case "name":
-                    $actionName = $child->getContent();
+                    $actionName = $child->getText();
                     break;
                 case "method":
-                    $httpMethod = $child->getContent();
+                    $httpMethod = strtoupper($child->getText());
                     break;
                 case "url":
                     list($pattern, $params) = $this->compileUrl($child);
@@ -190,9 +190,47 @@ class Router
         $pattern = "";
         $params = [];
 
-        // TODO implement...
+        foreach ($url->getChildren() as $child) {
+            switch ($child->getName()) {
+                case "url_part":
+                    if (!empty($pattern)) {
+                        $pattern .= "\\/";
+                    }
+                    $pattern .= $child->getText();
+                    break;
+                case "param":
+                    $this->compileParam($child, $pattern, $params);
+                    break;
+            }
+        }
+
+        $pattern = '/^\\/?' . $pattern . '\\/?$/';
 
         return [$pattern, $params];
+    }
+
+    private function compileParam(Ast $param, &$pattern, &$params)
+    {
+        foreach ($param->getChildren() as $child) {
+            switch ($child->getName()) {
+                case "name":
+                    $name = $child->getText();
+                    $params[] = $name;
+                    break;
+                case "type":
+                    if (!empty($pattern)) {
+                        $pattern .= "\\/";
+                    }
+                    $type = $child->getText();
+                    if ($type == "int") {
+                        $pattern .= "(\\d+)";
+                    } else {
+                        $pattern .= "([^\\/]+)";
+                    }
+                    break;
+            }
+        }
+
     }
 
     /**
@@ -259,7 +297,7 @@ class Router
                 }
             }
 
-            $pattern = '/\\/?' . implode('\\/', $segments) . '\\/?$/';
+            $pattern = '/^\\/?' . implode('\\/', $segments) . '\\/?$/';
 
         }
 
