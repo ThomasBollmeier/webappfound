@@ -204,7 +204,13 @@ class Router
             }
         }
 
-        $pattern = '/^\\/?' . $pattern . '\\/?$/';
+        if (empty($this->baseUrl)) {
+            $pattern = '/^\\/?' . $pattern . '\\/?$/';
+        } else {
+            $baseUrl = trim($this->baseUrl, '/');
+            $baseUrl = str_replace("/", "\\/", $baseUrl);
+            $pattern = '/^\\/?' . $baseUrl . '\\/'. $pattern . '\\/?$/';
+        }
 
         return [$pattern, $params];
     }
