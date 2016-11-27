@@ -23,7 +23,7 @@ class RouteParserTest extends TestCase
         show [get /my-todos/:item_id(int)]
         create [post /my-todos]
         change [put /my-todos/:item_id(int)]
-        destroy [delete /my-todos/:item_id(int)]))
+        delete [delete /my-todos/:item_id(int)]))
 CODE;
 
         $parser = new RouteParser();

@@ -97,7 +97,7 @@ class RouteParser
 
         $parser->consumeExpected(self::PAR_OPEN, self::ACTIONS);
 
-        while ($parser->checkFor(self::ID)) {
+        while ($parser->checkFor([self::ID, self::GET, self::POST, self::PUT, self::DELETE])) {
             $action = $this->action($parser);
             $ast->addChild($action);
         }
@@ -110,7 +110,7 @@ class RouteParser
     private function action(parsian\Parser $parser)
     {
         $ast = new parsian\Ast("action");
-        $tokens = $parser->consumeExpected(self::ID);
+        $tokens = $parser->consumeExpected([self::ID, self::GET, self::POST, self::PUT, self::DELETE]);
         $ast->addChild(new parsian\Ast("name", $tokens[0]->getContent()));
 
         $this->route($parser, $ast);
@@ -159,7 +159,7 @@ class RouteParser
                 $url->addChild(new parsian\Ast("url_part", $token->getContent()));
                 $expected = [self::SLASH];
             } else { // Colon can start parameter or default keyword
-                if ($parser->checkFor(self::DEFAULT)) {
+                if ($parser->checkFor(self::COLON, self::DEFAULT)) {
                     break; // <-- url is parsed
                 }
                 $parser->consume();
