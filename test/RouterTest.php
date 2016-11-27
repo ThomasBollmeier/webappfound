@@ -43,6 +43,13 @@ ROUTING_DSL;
         $router->route("GET", "nonexisting/todos");
         $this->assertEquals("index", \TestController::$callInfo->action);
 
+        $router->route("DELETE", "todos/4711");
+        $this->assertEquals("destroy", \TestController::$callInfo->action);
+        $this->assertEquals("4711", \TestController::$callInfo->urlParams["id"]);
+
+        $router->route("DELETE", "todos/abc");
+        $this->assertEquals("index", \TestController::$callInfo->action);
+
     }
 
 }
