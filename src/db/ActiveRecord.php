@@ -22,7 +22,7 @@ abstract class ActiveRecord
 {
     const INDEX_NOT_IN_DB = -1;
 
-    private static $dbConn;
+    protected static $dbConn;
     protected $id;
     protected $_meta;
     protected $_state;
@@ -104,7 +104,17 @@ abstract class ActiveRecord
     {
         $dbName = $options['dbAlias'] ?? $name;
         $pdoType = $options['pdoType'] ?? \PDO::PARAM_STR;
-        $this->_meta->fields[$name] = [$dbName, $pdoType];
+        /*
+         * convToDb and convFromDb are callback functions that
+         * are used to implement a custom data conversion while
+         * reading from or writing to the database.
+         *
+         * function convToDb($value) : $dbValue
+         * function convFromDb($dbValue) : $value
+         */
+        $convToDb = $options['convToDb'] ?? null;
+        $convFromDb = $options['convFromDb'] ?? null;
+        $this->_meta->fields[$name] = [$dbName, $pdoType, $convToDb, $convFromDb];
 
         $this->_state->row[$dbName] = null;
     }
@@ -150,7 +160,18 @@ abstract class ActiveRecord
             // It's a property
             $field = $this->_meta->fields[$name];
             $dbName = $field[0];
-            return $this->_state->row[$dbName] ?? null;
+            $dbValue = $this->_state->row[$dbName] ?? null;
+            if ($dbValue !== null) {
+                $convFromDb = $field[3];
+                if ($convFromDb === null) {
+                    return $dbValue;
+                } else {
+                    return $convFromDb($dbValue);
+                }
+            } else {
+                return null;
+            }
+
 
         } elseif ($this->_meta->assocs[$name]) {
 
@@ -181,7 +202,9 @@ abstract class ActiveRecord
             // It's a property
             $field = $this->_meta->fields[$name];
             $dbName = $field[0];
-            $this->_state->row[$dbName] = $value;
+            $convToDb = $field[2];
+            $this->_state->row[$dbName] = $convToDb === null ?
+                $value : $convToDb($value);
 
         } elseif (isset($this->_meta->assocs[$name])) {
 
