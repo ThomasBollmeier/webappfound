@@ -34,12 +34,19 @@ abstract class ActiveRecord
 
     public static function query($options = [])
     {
-        $objects = [];
         $params = $options['params'] ?? [];
         $model = new static();
         $sql = $model->_meta->sqlBuilder->createSelectCommand(
             $model->_meta->tableName,
             $options);
+
+        return self::queryCustom($sql, $params);
+    }
+
+    public static function queryCustom($sql, $params = [])
+    {
+        $objects = [];
+
         $stmt = self::$dbConn->prepare($sql);
         $stmt->execute($params);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -50,6 +57,7 @@ abstract class ActiveRecord
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         }
         $stmt->closeCursor();
+
         return $objects;
     }
 
