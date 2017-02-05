@@ -17,7 +17,7 @@
 
 namespace tbollmeier\webappfound\routing;
 
-use tbollmeier\parsian\Ast;
+use tbollmeier\parsian\output\Ast;
 
 
 class Router
@@ -113,7 +113,7 @@ class Router
 
     public function registerActionsFromDSL($filePathOrCode)
     {
-        $parser = new RouteParser();
+        $parser = new RoutingDslParser();
 
         if (file_exists($filePathOrCode)) {
             $ast = $parser->parseFile($filePathOrCode);
@@ -131,18 +131,10 @@ class Router
 
     private function compileController(Ast $controller)
     {
-        $name = "";
+        $controllerName = $controller->getAttr("name");
+        $actions = $controller->getChildren()[0];
 
-        foreach ($controller->getChildren() as $child)
-        {
-            switch ($child->getName()) {
-                case "name":
-                    $name = $child->getText();
-                    break;
-                case "actions":
-                    $this->compileActions($name, $child);
-            }
-        }
+        $this->compileActions($controllerName, $actions);
     }
 
     private function compileActions(string $controllerName, Ast $actions)
@@ -154,28 +146,16 @@ class Router
 
     private function compileAction(string $controllerName, Ast $action)
     {
-        $actionName = "";
-        $httpMethod = "";
-        $pattern = "";
-        $params = [];
+        $actionName = $action->getAttr("name");
+        $httpMethod = $action->getAttr("method");
 
-        foreach ($action->getChildren() as $child) {
-            switch ($child->getName()) {
-                case "name":
-                    $actionName = $child->getText();
-                    break;
-                case "method":
-                    $httpMethod = strtoupper($child->getText());
-                    break;
-                case "url":
-                    list($pattern, $params) = $this->compileUrl($child);
-                    break;
-                case "default":
-                    $this->defaultCtrl = $this->controllerNS . '\\' . $controllerName;
-                    $this->defaultAction = $actionName;
-                    break;
-            }
+        if ($action->hasAttr("default")) {
+            $this->defaultCtrl = $this->controllerNS . '\\' . $controllerName;
+            $this->defaultAction = $actionName;
         }
+
+        $url = $action->getChildren()[0];
+        list($pattern, $params) = $this->compileUrl($url);
 
         $handlers = isset($this->handlers[$httpMethod]) ?
             $this->handlers[$httpMethod] :
@@ -192,7 +172,7 @@ class Router
 
         foreach ($url->getChildren() as $child) {
             switch ($child->getName()) {
-                case "url_part":
+                case "path_segment":
                     if (!empty($pattern)) {
                         $pattern .= "\\/";
                     }
@@ -217,24 +197,18 @@ class Router
 
     private function compileParam(Ast $param, &$pattern, &$params)
     {
-        foreach ($param->getChildren() as $child) {
-            switch ($child->getName()) {
-                case "name":
-                    $name = $child->getText();
-                    $params[] = $name;
-                    break;
-                case "type":
-                    if (!empty($pattern)) {
-                        $pattern .= "\\/";
-                    }
-                    $type = $child->getText();
-                    if ($type == "int") {
-                        $pattern .= "(\\d+)";
-                    } else {
-                        $pattern .= "([^\\/]+)";
-                    }
-                    break;
-            }
+        $params[] = $param->getAttr("name");
+
+        $type = $param->getAttr("type");
+
+        if (!empty($pattern)) {
+            $pattern .= "\\/";
+        }
+
+        if ($type == "int") {
+            $pattern .= "(\\d+)";
+        } else {
+            $pattern .= "([^\\/]+)";
         }
 
     }

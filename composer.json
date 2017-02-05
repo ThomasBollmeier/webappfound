@@ -1,7 +1,7 @@
 {
 
   "name": "tbollmeier/webappfound",
-  "version": "0.6.6",
+  "version": "0.8.0",
   "description": "Various helper classes for a MVC based webapp",
 
   "authors": [
@@ -15,7 +15,7 @@
 
   "require": {
     "php": "^7.0",
-    "tbollmeier/parsian": "0.98.0"
+    "tbollmeier/parsian": "dev-master"
   },
 
   "require-dev": {

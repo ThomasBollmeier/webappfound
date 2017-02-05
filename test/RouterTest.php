@@ -16,13 +16,13 @@ class RouterTest extends TestCase
 
 (controller TestController
     (actions 
-        index [get /todos :default]
-        show [get /todos/:id(int)]
-        new [get /todos/new]
-        create [post /todos]
-        edit [get /todos/:id(int)/edit]
-        update [put /todos/:id(int)]
-        destroy [delete /todos/:id(int)]))
+        index [get /my-todos :default]
+        show [get /my-todos/:id(int)]
+        new [get /my-todos/new]
+        create [post /my-todos]
+        edit [get /my-todos/:id(int)/edit]
+        update [put /my-todos/:id(int)]
+        destroy [delete /my-todos/:id(int)]))
 
 ROUTING_DSL;
 
@@ -30,24 +30,24 @@ ROUTING_DSL;
 
         $router->registerActionsFromDSL($code);
 
-        $router->route("GET", "todos");
+        $router->route("GET", "my-todos");
         $this->assertEquals("index", \TestController::$callInfo->action);
 
-        $router->route("POST", "todos");
+        $router->route("POST", "my-todos");
         $this->assertEquals("create", \TestController::$callInfo->action);
 
-        $router->route("GET", "todos/42/edit");
+        $router->route("GET", "my-todos/42/edit");
         $this->assertEquals("edit", \TestController::$callInfo->action);
         $this->assertEquals("42", \TestController::$callInfo->urlParams["id"]);
 
         $router->route("GET", "nonexisting/todos");
         $this->assertEquals("index", \TestController::$callInfo->action);
 
-        $router->route("DELETE", "todos/4711");
+        $router->route("DELETE", "my-todos/4711");
         $this->assertEquals("destroy", \TestController::$callInfo->action);
         $this->assertEquals("4711", \TestController::$callInfo->urlParams["id"]);
 
-        $router->route("DELETE", "todos/abc");
+        $router->route("DELETE", "my-todos/abc");
         $this->assertEquals("index", \TestController::$callInfo->action);
 
     }

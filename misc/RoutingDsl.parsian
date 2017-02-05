@@ -1,0 +1,38 @@
+(*
+Grammar for routing
+(c) Thomas Bollmeier 2017 <entwickler@tbollmeier.de>
+*)
+
+-- Lexical elements:
+
+comment ";;" "\n";
+
+symbol LPAREN "(";
+symbol RPAREN ")";
+symbol LSQBR "[";
+symbol RSQBR "]";
+symbol SLASH "/";
+symbol HYPHEN "-";
+
+token ID /[_a-zA-Z][_a-zA-Z0-9]*/;
+token URL_PARAM /:[a-zA-Z][_a-zA-Z0-9]*/;
+
+-- Production rules:
+
+@root
+routing_dsl -> controller+;
+
+controller -> LPAREN 'controller' ctrl#ID actions RPAREN;
+
+actions -> LPAREN 'actions' action+ RPAREN;
+
+action -> (action#ID | action#method) LSQBR method url ':default'? RSQBR;
+
+method -> 'get' | 'post' | 'put' | 'delete';
+
+url -> (SLASH url_segment)+ | SLASH;
+
+url_segment -> segm_part#ID (HYPHEN segm_part#ID)* | URL_PARAM type_info?;
+
+type_info -> LPAREN 'int' RPAREN;
+
