@@ -1,13 +1,12 @@
 {
 
   "name": "tbollmeier/webappfound",
-  "version": "0.8.0",
   "description": "Various helper classes for a MVC based webapp",
 
   "authors": [
     {
       "name": "Thomas Bollmeier",
-      "homepage": "http://tbollmeier.de"
+      "homepage": "http://tbollmeier.org"
     }
   ],
 
