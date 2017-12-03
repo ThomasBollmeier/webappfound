@@ -21,7 +21,6 @@ controller TodosController
 end
 
 default action TodosController#index
-
 CODE;
 
         $parser = new RoutesParser();
