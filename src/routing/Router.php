@@ -45,6 +45,7 @@ class Router
      *
      * @param string $method HTTP method ('GET, 'PUT', etc.)
      * @param string $url URL to be parsed (including query string)
+     * @throws \Exception
      */
     public function route($method, $url)
     {
@@ -111,9 +112,15 @@ class Router
         call_user_func_array([$controller, $action], $args);
     }
 
+    /**
+     * Register controller actions for routes
+     *
+     * @param $filePathOrCode
+     * @throws \Exception
+     */
     public function registerActionsFromDSL($filePathOrCode)
     {
-        $parser = new RoutingDslParser();
+        $parser = new RoutesParser();
 
         if (file_exists($filePathOrCode)) {
             $ast = $parser->parseFile($filePathOrCode);
@@ -121,20 +128,28 @@ class Router
             $ast = $parser->parseString($filePathOrCode);
         }
 
-        $controllers = $ast->getChildren();
-        foreach ($controllers as $controller) {
-            $this->compileController($controller);
+        if ($ast === false) {
+            throw new \Exception($parser->error());
         }
 
+        foreach ($ast->getChildren() as $child) {
+            switch ($child->getName()) {
+                case "controller":
+                    $this->compileController($child);
+                    break;
+                case "default_action":
+                    $this->compileDefaultAction($child);
+                    break;
+            }
+        }
 
     }
 
     private function compileController(Ast $controller)
     {
-        $controllerName = $controller->getAttr("name");
-        $actions = $controller->getChildren()[0];
+        list($name, $actions) = $controller->getChildren();
+        $this->compileActions($name->getText(), $actions);
 
-        $this->compileActions($controllerName, $actions);
     }
 
     private function compileActions(string $controllerName, Ast $actions)
@@ -144,17 +159,20 @@ class Router
         }
     }
 
+    private function compileDefaultAction(Ast $defaultAction)
+    {
+        list($controller, $action) = $defaultAction->getChildren();
+        $this->defaultCtrl = $this->controllerNS . '\\' . $controller->getText();
+        $this->defaultAction = $action->getText();
+    }
+
     private function compileAction(string $controllerName, Ast $action)
     {
-        $actionName = $action->getAttr("name");
-        $httpMethod = $action->getAttr("method");
+        list($name, $method, $url) = $action->getChildren();
 
-        if ($action->hasAttr("default")) {
-            $this->defaultCtrl = $this->controllerNS . '\\' . $controllerName;
-            $this->defaultAction = $actionName;
-        }
+        $actionName = $name->getText();
+        $httpMethod = strtoupper($method->getName());
 
-        $url = $action->getChildren()[0];
         list($pattern, $params) = $this->compileUrl($url);
 
         $handlers = isset($this->handlers[$httpMethod]) ?
@@ -197,15 +215,15 @@ class Router
 
     private function compileParam(Ast $param, &$pattern, &$params)
     {
-        $params[] = $param->getAttr("name");
+        list($name, $type) = $param->getChildren();
 
-        $type = $param->getAttr("type");
+        $params[] = $name->getText();
 
         if (!empty($pattern)) {
             $pattern .= "\\/";
         }
 
-        if ($type == "int") {
+        if ($type->getText() == "int") {
             $pattern .= "(\\d+)";
         } else {
             $pattern .= "([^\\/]+)";

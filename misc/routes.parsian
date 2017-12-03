@@ -1,0 +1,67 @@
+(*
+ Grammar for routing
+ Author: Thomas Bollmeier <developer@tbollmeier.org>
+ *)
+
+comment "%" "\n";
+
+-- Tokens:
+
+symbol LARROW '<-';
+symbol SLASH '/';
+symbol LBRA '<';
+symbol RBRA '>';
+symbol COLON ':';
+symbol HASH '#';
+
+token PATH_SEGMENT /[_a-zA-Z][_a-zA-Z0-9\-]*/;
+token ID /[_a-zA-Z][_a-zA-Z0-9]*/;
+
+-- Rules:
+
+@root
+controllers -> controller+ default_action_def?;
+
+controller -> 'controller' name#ID acts#actions 'end' => {
+    :name "controller"
+    :children [
+        {:name "name"
+         :text #name.text}
+        #acts
+    ]
+};
+
+default_action_def -> 'default' 'action' controller#ID HASH action#ID => {
+    :name "default_action"
+    :children [
+        {:name "controller" :text #controller.text}
+        {:name "action" :text #action.text}
+    ]
+};
+
+actions -> 'actions' act#action+ 'end' => {
+    :name "actions"
+    :children #act
+};
+
+action -> name#ID LARROW meth#method url#url => {
+    :name "action"
+    :children [
+        {:name "name" :text #name.text}
+        #meth
+        #url
+    ]
+};
+
+method -> 'get' | 'post' | 'put' | 'delete' => child;
+
+url -> (SLASH seg#segment)+ | SLASH => {
+    :name "url"
+    :children #seg
+};
+
+segment -> PATH_SEGMENT | param => child;
+
+param -> LBRA name#ID (COLON ty#type)? RBRA;
+
+type -> 'int' => child;

@@ -12,17 +12,21 @@ class RouterTest extends TestCase
     function testRegisterActionsFromDSL()
     {
         $code = <<<ROUTING_DSL
-;; A simple controller
+% A simple controller
 
-(controller TestController
-    (actions 
-        index [get /my-todos :default]
-        show [get /my-todos/:id(int)]
-        new [get /my-todos/new]
-        create [post /my-todos]
-        edit [get /my-todos/:id(int)/edit]
-        update [put /my-todos/:id(int)]
-        destroy [delete /my-todos/:id(int)]))
+controller TestController
+    actions 
+        index <- get /my-todos
+        show <- get /my-todos/<id:int>
+        new <- get /my-todos/new
+        create <- post /my-todos
+        edit <- get /my-todos/<id:int>/edit
+        update <- put /my-todos/<id:int>
+        destroy <- delete /my-todos/<id:int>
+    end
+end
+
+default action TestController#index
 
 ROUTING_DSL;
 
