@@ -327,6 +327,10 @@ abstract class ActiveRecord
         }
 
         $stmt->execute();
+        
+        if (!$stmt->execute()) {
+            throw new \PDOException($stmt->errorInfo()[2]);
+        }
 
         if ($isNew) {
             $this->id = self::$dbConn->lastInsertId();
