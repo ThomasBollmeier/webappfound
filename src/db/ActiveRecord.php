@@ -326,8 +326,6 @@ abstract class ActiveRecord
             $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         }
 
-        $stmt->execute();
-        
         if (!$stmt->execute()) {
             throw new \PDOException($stmt->errorInfo()[2]);
         }
