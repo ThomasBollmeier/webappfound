@@ -87,8 +87,15 @@ abstract class ActiveRecord
     {
         if ($this->id != self::INDEX_NOT_IN_DB) {
 
-            $sql = 'SELECT id FROM ' . $this->_meta->tableName;
-            $sql .= ' WHERE id = :id';
+            $builder = $this->_meta->sqlBuilder;
+
+            $sql = $builder->createSelectCommand(
+                $this->_meta->tableName,
+                [
+                    'fields' => ["id"],
+                    'filter' => "id = :id"
+                ]
+            );
             $stmt = self::$dbConn->prepare($sql);
             $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
 
@@ -381,13 +388,15 @@ abstract class ActiveRecord
                 }
 
                 // Insert new link
-                $sql = 'INSERT INTO ' . $linkTable . ' (';
-                $sql .= $sourceId . ', ' . $targetId . ') ';
-                $sql .= 'VALUES (:source_id, :target_id)';
+                $builder = $this->_meta->sqlBuilder;
+                $sql = $builder->createInsertCommand(
+                    $linkTable,
+                    [$sourceId, $targetId]);
+
                 $stmt = self::$dbConn->prepare($sql);
                 $objId = $obj->getId();
-                $stmt->bindParam(':source_id', $this->id, \PDO::PARAM_INT);
-                $stmt->bindParam(':target_id', $objId, \PDO::PARAM_INT);
+                $stmt->bindParam(':'.$sourceId, $this->id, \PDO::PARAM_INT);
+                $stmt->bindParam(':'.$targetId, $objId, \PDO::PARAM_INT);
                 $stmt->execute();
             }
         }
@@ -411,9 +420,11 @@ abstract class ActiveRecord
                                 $targetId,
                                 $objId)
     {
-        $sql = 'DELETE FROM ' . $linkTable;
-        $sql .= ' WHERE ' . $sourceId . ' = :source_id AND ';
-        $sql .= $targetId . ' = :target_id';
+        $builder = $this->_meta->sqlBuilder;
+        $sql = $builder->createDeleteCommand(
+            $linkTable,
+            "$sourceId = :source_id AND $targetId = :target_id"
+        );
         $stmt = self::$dbConn->prepare($sql);
         $stmt->bindParam(':source_id', $this->id, \PDO::PARAM_INT);
         $stmt->bindParam(':target_id', $objId, \PDO::PARAM_INT);

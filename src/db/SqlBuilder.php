@@ -51,9 +51,9 @@ class SqlBuilder
         return $sql;
     }
 
-    public function createDeleteCommand($tableName)
+    public function createDeleteCommand($tableName, $where="id = :id")
     {
-        return 'DELETE FROM '.$tableName.' WHERE id = :id';
+        return 'DELETE FROM '.$tableName.' WHERE '.$where;
     }
 
     public function createSelectCommand($tableName, $options)

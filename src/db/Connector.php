@@ -28,7 +28,11 @@ class Connector
      */
     public function createConfigConnection($configFile)
     {
-        $options = $this->parseConfigFile($configFile);
+        try {
+            $options = $this->parseConfigFile($configFile);
+        } catch (\Exception $error) {
+            return false;
+        }
 
         return $this->createConnection($options);
     }
@@ -51,6 +55,11 @@ class Connector
 
     }
 
+    /**
+     * @param $configFile
+     * @return mixed
+     * @throws \Exception
+     */
     private function parseConfigFile($configFile)
     {
 
@@ -82,6 +91,11 @@ class Connector
 
     }
 
+    /**
+     * @param $options
+     * @return string
+     * @throws \Exception
+     */
     private function composeDSN($options)
     {
         $dsn = "";
@@ -100,7 +114,7 @@ class Connector
         $dsn .= ';dbname='.$options['dbname'];
 
         if (array_key_exists('charset', $options)) {
-            $dsn .= ";port=".$options['charset'];
+            $dsn .= ";charset=".$options['charset'];
         }
 
         return $dsn;

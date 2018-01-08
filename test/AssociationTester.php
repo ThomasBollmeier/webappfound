@@ -57,7 +57,7 @@ class AssociationTester extends PHPUnit_Framework_TestCase
         $this->dbConn = $connector->createConnection([
             'dbname' => 'waftest',
             'user' => 'waftester',
-            'password' => ''
+            'password' => 'test1234'
         ]);
 
         $this->assertNotNull($this->dbConn);
@@ -65,6 +65,33 @@ class AssociationTester extends PHPUnit_Framework_TestCase
 
         db\ActiveRecord::setDbConnection($this->dbConn);
 
+        $this->initContent();
+
+    }
+
+    private function initContent()
+    {
+        $this->dbConn->exec("DELETE FROM people");
+        $this->dbConn->exec("DELETE FROM hobbies");
+        $this->dbConn->exec("DELETE FROM people_hobbies");
+
+        $person = new Person();
+        $person->firstName = "Herbert";
+        $person->name = "Mustermann";
+
+        $this->addHobby($person, "Laufen");
+        $this->addHobby($person, "Programmieren");
+
+        $person->save();
+    }
+
+    private function addHobby($person, $name)
+    {
+        $hobby = new Hobby();
+        $hobby->name = $name;
+        $hobbies = $person->hobbies;
+        $hobbies[] = $hobby;
+        $person->hobbies = $hobbies;
     }
 
     public function tearDown()
