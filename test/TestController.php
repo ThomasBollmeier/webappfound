@@ -53,4 +53,11 @@ class TestController
         self::$callInfo->urlParams = $urlParams;
     }
 
+    public function delete($urlParams)
+    {
+        self::$callInfo = new stdClass();
+        self::$callInfo->action = 'delete';
+        self::$callInfo->urlParams = $urlParams;
+    }
+
 }

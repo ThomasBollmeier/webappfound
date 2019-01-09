@@ -6,7 +6,8 @@
   "authors": [
     {
       "name": "Thomas Bollmeier",
-      "homepage": "http://tbollmeier.org"
+      "email": "developer@thomas-bollmeier.de",
+      "role": "developer"
     }
   ],
 
@@ -14,7 +15,7 @@
 
   "require": {
     "php": "^7.0",
-    "tbollmeier/parsian": "v1.7.2"
+    "tbollmeier/parsian": "v1.7.6"
   },
 
   "require-dev": {

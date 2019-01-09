@@ -1,6 +1,6 @@
 <?php
 /*
-   Copyright 2016 Thomas Bollmeier <entwickler@tbollmeier.de>
+   Copyright 2016-2019 Thomas Bollmeier <developer@thomas-bollmeier.de>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 */
 
 namespace tbollmeier\webappfound\routing;
-
-use tbollmeier\parsian\output\Ast;
 
 
 class Router
@@ -38,6 +36,30 @@ class Router
         $this->defaultAction = $defaultAction;
         $this->baseUrl = $options['baseUrl'] ?? '';
         $this->handlers = [];
+    }
+
+    /**
+     * Setup handlers
+     *
+     * @param RouterData $data
+     */
+    public function setupHandlers(RouterData $data)
+    {
+        $this->handlers = [];
+
+        foreach ($data->controllers as $controller) {
+            foreach ($controller->actions as $action) {
+                $handlers = isset($this->handlers[$action->httpMethod]) ?
+                    $this->handlers[$action->httpMethod] :
+                    [];
+                $handlers[] = [
+                    $action->pattern,
+                    $action->paramNames,
+                    $controller->name,
+                    $action->name];
+                $this->handlers[$action->httpMethod] = $handlers;
+            }
+        }
     }
 
     /**
@@ -120,115 +142,16 @@ class Router
      */
     public function registerActionsFromDSL($filePathOrCode)
     {
-        $parser = new RoutesParser();
+        $factory = new RouterFactory();
 
-        if (file_exists($filePathOrCode)) {
-            $ast = $parser->parseFile($filePathOrCode);
-        } else {
-            $ast = $parser->parseString($filePathOrCode);
-        }
+        $router = $factory->createFromDSL(
+            $filePathOrCode,
+            $this->baseUrl,
+            $this->controllerNS);
 
-        if ($ast === false) {
-            throw new \Exception($parser->error());
-        }
-
-        foreach ($ast->getChildren() as $child) {
-            switch ($child->getName()) {
-                case "controller":
-                    $this->compileController($child);
-                    break;
-                case "default_action":
-                    $this->compileDefaultAction($child);
-                    break;
-            }
-        }
-
-    }
-
-    private function compileController(Ast $controller)
-    {
-        list($name, $actions) = $controller->getChildren();
-        $this->compileActions($name->getText(), $actions);
-
-    }
-
-    private function compileActions(string $controllerName, Ast $actions)
-    {
-        foreach ($actions->getChildren() as $action) {
-            $this->compileAction($controllerName, $action);
-        }
-    }
-
-    private function compileDefaultAction(Ast $defaultAction)
-    {
-        list($controller, $action) = $defaultAction->getChildren();
-        $this->defaultCtrl = $this->controllerNS . '\\' . $controller->getText();
-        $this->defaultAction = $action->getText();
-    }
-
-    private function compileAction(string $controllerName, Ast $action)
-    {
-        list($name, $method, $url) = $action->getChildren();
-
-        $actionName = $name->getText();
-        $httpMethod = strtoupper($method->getName());
-
-        list($pattern, $params) = $this->compileUrl($url);
-
-        $handlers = isset($this->handlers[$httpMethod]) ?
-            $this->handlers[$httpMethod] :
-            [];
-        $handlers[] = [$pattern, $params, $controllerName, $actionName];
-        $this->handlers[$httpMethod] = $handlers;
-
-    }
-
-    private function compileUrl(Ast $url)
-    {
-        $pattern = "";
-        $params = [];
-
-        foreach ($url->getChildren() as $child) {
-            switch ($child->getName()) {
-                case "path_segment":
-                    if (!empty($pattern)) {
-                        $pattern .= "\\/";
-                    }
-                    $pattern .= $child->getText();
-                    break;
-                case "param":
-                    $this->compileParam($child, $pattern, $params);
-                    break;
-            }
-        }
-
-        if (empty($this->baseUrl)) {
-            $pattern = '/^\\/?' . $pattern . '\\/?$/';
-        } else {
-            $baseUrl = trim($this->baseUrl, '/');
-            $baseUrl = str_replace("/", "\\/", $baseUrl);
-            $pattern = '/^\\/?' . $baseUrl . '\\/'. $pattern . '\\/?$/';
-        }
-
-        return [$pattern, $params];
-    }
-
-    private function compileParam(Ast $param, &$pattern, &$params)
-    {
-        list($name, $type) = $param->getChildren();
-
-        $params[] = $name->getText();
-
-        if (!empty($pattern)) {
-            $pattern .= "\\/";
-        }
-
-        if ($type->getText() == "int") {
-            $pattern .= "(\\d+)";
-        } else {
-            $pattern .= "([^\\/]+)";
-        }
-
+        $this->defaultCtrl = $router->defaultCtrl;
+        $this->defaultAction = $router->defaultAction;
+        $this->handlers = $router->handlers;
     }
 
     /**
