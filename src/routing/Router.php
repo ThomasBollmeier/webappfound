@@ -53,12 +53,23 @@ class Router
                     $this->handlers[$action->httpMethod] :
                     [];
                 $handlers[] = [
-                    $action->pattern,
+                    $this->fullPattern($action->pattern),
                     $action->paramNames,
                     $controller->name,
                     $action->name];
                 $this->handlers[$action->httpMethod] = $handlers;
             }
+        }
+    }
+
+    private function fullPattern($pattern)
+    {
+        if (empty($this->baseUrl)) {
+            return '/^\\/?' . $pattern . '\\/?$/';
+        } else {
+            $baseUrl = trim($this->baseUrl, '/');
+            $baseUrl = str_replace("/", "\\/", $baseUrl);
+            return '/^\\/?' . $baseUrl . '\\/' . $pattern . '\\/?$/';
         }
     }
 

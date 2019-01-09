@@ -1,6 +1,6 @@
 <?php
 /*
-   Copyright 2016 Thomas Bollmeier <entwickler@tbollmeier.de>
+   Copyright 2019 Thomas Bollmeier <developer@thomas-bollmeier.de>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,44 +15,32 @@
    limitations under the License.
 */
 
-namespace tbollmeier\webappfound\ui;
+namespace tbollmeier\webappfound\templating;
 
 /**
  * Class Template
- * @package tbollmeier\webappfound\ui
- * @deprecated Use Template class from tbollmeier\webappfound\templating
+ * @package tbollmeier\webappfound\templating
  *
  */
 class Template
 {
-    private static $templateDir = '';
     private $template;
 
-    public static function setTemplateDir($templateDir)
+    public function __construct($templatePath)
     {
-        self::$templateDir = $templateDir;
+        $this->template = $templatePath;
     }
 
-    public function __construct($template)
+    public function getContent($data=[])
     {
-        $this->template = $template;
-    }
-
-    public function getHtml($data=[])
-    {
-        $path = !empty(self::$templateDir) ?
-            self::$templateDir . DIRECTORY_SEPARATOR :
-            '';
-        $path .= $this->template;
-
         extract($data);
 
         ob_start();
-        require($path);
-        $html = ob_get_contents();
+        require($this->template);
+        $content = ob_get_contents();
         ob_end_clean();
 
-        return $html;
+        return $content;
     }
 
 }

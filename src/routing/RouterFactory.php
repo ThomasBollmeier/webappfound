@@ -17,8 +17,6 @@
 
 namespace tbollmeier\webappfound\routing;
 
-use tbollmeier\parsian\output\Ast;
-
 class RouterFactory
 {
     /**
@@ -34,7 +32,9 @@ class RouterFactory
         string $baseUrl = "",
         string $controllerNS = "") : Router
     {
-        $routerData = $this->compile($filePathOrCode, $baseUrl);
+        $compiler = new RoutesCompiler();
+
+        $routerData = $compiler->compile($filePathOrCode);
 
         $router = new Router([
             "controllerNS" => $controllerNS,
@@ -47,155 +47,4 @@ class RouterFactory
         return $router;
     }
 
-    /**
-     * @param string $filePathOrCode
-     * @param $baseUrl
-     * @return RouterData
-     * @throws \Exception
-     */
-    private function compile(string $filePathOrCode, string $baseUrl) : RouterData
-    {
-        $parser = new RoutesParser();
-
-        if (file_exists($filePathOrCode)) {
-            $ast = $parser->parseFile($filePathOrCode);
-        } else {
-            $ast = $parser->parseString($filePathOrCode);
-        }
-
-        if ($ast === false) {
-            throw new \Exception($parser->error());
-        }
-
-        $ret = new RouterData();
-        $ret->controllers = [];
-        $ret->defaultAction = new DefaultActionData();
-
-        foreach ($ast->getChildren() as $child) {
-            switch ($child->getName()) {
-                case "controller":
-                    $ret->controllers[] = $this->compileController($child, $baseUrl);
-                    break;
-                case "default_action":
-                    $ret->defaultAction = $this->compileDefaultAction($child);
-                    break;
-            }
-        }
-
-        return $ret;
-    }
-
-    private function compileController(Ast $controller, $baseUrl) : ControllerData
-    {
-        $ret = new ControllerData();
-
-        list($name, $actions) = $controller->getChildren();
-
-        $ret->name = $name->getText();
-        $ret->actions = $this->compileActions($actions, $baseUrl);
-
-        return $ret;
-    }
-
-    private function compileActions(Ast $actions, $baseUrl) : array
-    {
-        return array_map(function ($action) use ($baseUrl) {
-            return $this->compileAction($action, $baseUrl);
-        }, $actions->getChildren());
-    }
-
-    private function compileDefaultAction(Ast $defaultAction) : DefaultActionData
-    {
-        $ret = new DefaultActionData();
-
-        list($controller, $action) = $defaultAction->getChildren();
-        $ret->controllerName = $controller->getText();
-        $ret->actionName = $action->getText();
-
-        return $ret;
-    }
-
-    private function compileAction(Ast $action, $baseUrl) : ActionData
-    {
-        $ret = new ActionData();
-
-        list($name, $method, $url) = $action->getChildren();
-
-        $ret->name = $name->getText();
-        $ret->httpMethod = strtoupper($method->getName());
-
-        list($ret->pattern, $ret->paramNames) = $this->compileUrl($url, $baseUrl);
-
-        return $ret;
-    }
-
-    private function compileUrl(Ast $url, string $baseUrl)
-    {
-        $pattern = "";
-        $params = [];
-
-        foreach ($url->getChildren() as $child) {
-            switch ($child->getName()) {
-                case "path_segment":
-                    if (!empty($pattern)) {
-                        $pattern .= "\\/";
-                    }
-                    $pattern .= $child->getText();
-                    break;
-                case "param":
-                    $this->compileParam($child, $pattern, $params);
-                    break;
-            }
-        }
-
-        if (empty($baseUrl)) {
-            $pattern = '/^\\/?' . $pattern . '\\/?$/';
-        } else {
-            $baseUrl_ = trim($baseUrl, '/');
-            $baseUrl_ = str_replace("/", "\\/", $baseUrl_);
-            $pattern = '/^\\/?' . $baseUrl_ . '\\/' . $pattern . '\\/?$/';
-        }
-
-        return [$pattern, $params];
-    }
-
-    private function compileParam(Ast $param, &$pattern, &$params)
-    {
-        list($name, $type) = $param->getChildren();
-
-        $params[] = $name->getText();
-
-        if (!empty($pattern)) {
-            $pattern .= "\\/";
-        }
-
-        if ($type->getText() == "int") {
-            $pattern .= "(\\d+)";
-        } else {
-            $pattern .= "([^\\/]+)";
-        }
-
-    }
-
-}
-
-class ControllerData
-{
-    public $name;
-    public $actions;
-}
-
-
-class ActionData
-{
-    public $name;
-    public $httpMethod;
-    public $pattern;
-    public $paramNames;
-}
-
-class DefaultActionData
-{
-    public $controllerName = "Index";
-    public $actionName = "index";
 }
