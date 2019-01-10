@@ -31,6 +31,7 @@ controller TestController
         new <- get /my-todos/new
         create <- post /my-todos
         edit <- get /my-todos/<id:int>/edit
+        showItem <- get /my-todos/<id:int>/<itemName>
         update <- put /my-todos/<id:int>
         delete <- delete /my-todos/<id:int>
     end
@@ -67,6 +68,11 @@ ROUTING_DSL;
         $router->route("GET", "my-todos/42/edit");
         $this->assertEquals("edit", \TestController::$callInfo->action);
         $this->assertEquals("42", \TestController::$callInfo->urlParams["id"]);
+
+        $router->route("GET", "my-todos/42/anItem");
+        $this->assertEquals("showItem", \TestController::$callInfo->action);
+        $this->assertEquals("42", \TestController::$callInfo->urlParams["id"]);
+        $this->assertEquals("anItem", \TestController::$callInfo->urlParams["itemName"]);
 
         $router->route("GET", "nonexisting/todos");
         $this->assertEquals("page404", \TestController::$callInfo->action);

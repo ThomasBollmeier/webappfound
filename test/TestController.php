@@ -25,6 +25,13 @@ class TestController
         self::$callInfo->urlParams = $urlParams;
     }
 
+    public function showItem($urlParams)
+    {
+        self::$callInfo = new stdClass();
+        self::$callInfo->action = 'showItem';
+        self::$callInfo->urlParams = $urlParams;
+    }
+
     public function new($urlParams)
     {
         self::$callInfo = new stdClass();
