@@ -3,3 +3,4 @@ vendor
 /nbproject/private/nbproject/
 nbproject
 composer.lock
+test/TestRouter.php

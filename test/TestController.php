@@ -11,6 +11,13 @@ class TestController
         self::$callInfo->urlParams = $urlParams;
     }
 
+    public function page404($urlParams)
+    {
+        self::$callInfo = new stdClass();
+        self::$callInfo->action = 'page404';
+        self::$callInfo->urlParams = $urlParams;
+    }
+
     public function show($urlParams)
     {
         self::$callInfo = new stdClass();
