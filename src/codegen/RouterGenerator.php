@@ -55,8 +55,6 @@ class RouterGenerator
         return $this->template->getContent([
             "className" => $className,
             "namespace" => $options->namespace,
-            "controllerNS" => $options->controllerNS,
-            "baseUrl" => $options->baseUrl,
             "defaultCtrlAction" => $options->defaultCtrlAction,
             "routerData" => $routerData
         ]);

@@ -21,7 +21,5 @@ namespace tbollmeier\webappfound\codegen;
 class GeneratorOptions
 {
     public $namespace = "";
-    public $controllerNS = "";
     public $defaultCtrlAction = "Index.index";
-    public $baseUrl = "";
 }

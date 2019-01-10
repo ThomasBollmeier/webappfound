@@ -14,12 +14,14 @@ use tbollmeier\webappfound\routing\DefaultActionData;
 
 class <?= $className ?> extends Router
 {
-    public function __construct()
+    public function __construct(
+        string $controllerNS = "",
+        string $baseUrl = "")
     {
         parent::__construct([
-            "controllerNS" => <?= "\"$controllerNS\"" ?>,
+            "controllerNS" => $controllerNS,
             "defaultCtrlAction" => <?= "\"$defaultCtrlAction\"" ?>,
-            "baseUrl" => <?= "\"$baseUrl\"" ?>]);
+            "baseUrl" => $baseUrl ]);
 
         $routerData = new RouterData();
 
