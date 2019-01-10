@@ -15,8 +15,8 @@ use tbollmeier\webappfound\routing\DefaultActionData;
 class <?= $className ?> extends Router
 {
     public function __construct(
-        string $controllerNS = "",
-        string $baseUrl = "")
+        $controllerNS = "",
+        $baseUrl = "")
     {
         parent::__construct([
             "controllerNS" => $controllerNS,
