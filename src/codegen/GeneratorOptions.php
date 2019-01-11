@@ -22,4 +22,5 @@ class GeneratorOptions
 {
     public $namespace = "";
     public $defaultCtrlAction = "Index.index";
+    public $baseRouterAlias = "";
 }

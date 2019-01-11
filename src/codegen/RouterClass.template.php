@@ -6,13 +6,21 @@ $defaultAction = $routerData->defaultAction->actionName;
 
 <?php if (!empty($namespace)) { echo "namespace $namespace;\n"; }?>
 
+<?php if (empty($baseRouterAlias)) { ?>
 use tbollmeier\webappfound\routing\Router;
+<?php } else { ?>
+use tbollmeier\webappfound\routing\Router as <?= $baseRouterAlias ?>;
+<?php } ?>
 use tbollmeier\webappfound\routing\RouterData;
 use tbollmeier\webappfound\routing\ControllerData;
 use tbollmeier\webappfound\routing\ActionData;
 use tbollmeier\webappfound\routing\DefaultActionData;
 
+<?php if (empty($baseRouterAlias)) { ?>
 class <?= $className ?> extends Router
+<?php } else { ?>
+class <?= $className ?> extends <?= $baseRouterAlias ?>
+<?php } ?>
 {
     public function __construct(
         $controllerNS = "",
