@@ -15,7 +15,8 @@
 
   "require": {
     "php": "^7.0",
-    "tbollmeier/parsian": "v1.7.6"
+    "tbollmeier/parsian": "v1.7.6",
+    "ext-json": "*"
   },
 
   "require-dev": {

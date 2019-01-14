@@ -18,6 +18,8 @@
 namespace tbollmeier\webappfound\routing;
 
 
+use tbollmeier\webappfound\http\Request;
+
 class Router
 {
 
@@ -108,6 +110,8 @@ class Router
                 $this->callAction(
                     new $controller(),
                     $action,
+                    $method,
+                    $url,
                     $urlParams,
                     $queryParams);
                 return;
@@ -118,15 +122,31 @@ class Router
         $this->callAction(
             new $this->defaultCtrl(),
             $this->defaultAction,
+            $method,
+            $url,
             $urlParams,
             $queryParams);
     }
 
-    private function callAction($controller, $action, $urlParams, $queryParams)
+    /**
+     * @param $controller
+     * @param $action
+     * @param $httpMethod
+     * @param $url
+     * @param $urlParams
+     * @param $queryParams
+     * @throws \ReflectionException
+     */
+    private function callAction($controller,
+                                $action,
+                                $httpMethod,
+                                $url,
+                                $urlParams,
+                                $queryParams)
     {
         $method = new \ReflectionMethod($controller, $action);
         $numRequired = $method->getNumberOfRequiredParameters();
-        if ($numRequired > 2) {
+        if ($numRequired > 1) {
             throw new \Exception('Not all arguments given!');
         }
         $numParams = $method->getNumberOfParameters();
@@ -134,11 +154,13 @@ class Router
             case 0:
                 $args = [];
                 break;
-            case 1:
-                $args = [$urlParams];
-                break;
-            case 2:
-                $args = [$urlParams, $queryParams];
+            default:
+                $request = Request::create(
+                    $httpMethod,
+                    $url,
+                    $urlParams,
+                    $queryParams);
+                $args = [$request];
                 break;
         }
 
@@ -234,6 +256,10 @@ class Router
         }
 
         return [$pattern, $params];
+    }
+
+    private function createRequest($url, $urlParams, $queryParams)
+    {
     }
 
 }
