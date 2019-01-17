@@ -19,6 +19,7 @@ namespace tbollmeier\webappfound\routing;
 
 
 use tbollmeier\webappfound\http\Request;
+use tbollmeier\webappfound\http\Response;
 
 class Router
 {
@@ -136,6 +137,7 @@ class Router
      * @param $urlParams
      * @param $queryParams
      * @throws \ReflectionException
+     * @throws \Exception
      */
     private function callAction($controller,
                                 $action,
@@ -145,26 +147,20 @@ class Router
                                 $queryParams)
     {
         $method = new \ReflectionMethod($controller, $action);
-        $numRequired = $method->getNumberOfRequiredParameters();
-        if ($numRequired > 1) {
-            throw new \Exception('Not all arguments given!');
-        }
         $numParams = $method->getNumberOfParameters();
-        switch ($numParams) {
-            case 0:
-                $args = [];
-                break;
-            default:
-                $request = Request::create(
-                    $httpMethod,
-                    $url,
-                    $urlParams,
-                    $queryParams);
-                $args = [$request];
-                break;
+        if ($numParams != 2) {
+            throw new \Exception('Two params (of type Request and Response) required');
         }
 
-        call_user_func_array([$controller, $action], $args);
+        $request = Request::create(
+            $httpMethod,
+            $url,
+            $urlParams,
+            $queryParams);
+        $response = new Response();
+
+        call_user_func_array([$controller, $action],
+            [$request, $response]);
     }
 
     /**

@@ -1,79 +1,70 @@
 <?php
 
 use tbollmeier\webappfound\http\Request;
+use tbollmeier\webappfound\http\Response;
 
 class TestController
 {
     public static $callInfo = null;
 
-    public function index(Request $req)
+    private function handle(string $action,
+                            Request $req,
+                            Response $res)
     {
         self::$callInfo = new stdClass();
-        self::$callInfo->action = 'index';
+        self::$callInfo->action = $action;
         self::$callInfo->urlParams = $req->getUrlParams();
+        //$res->send();
     }
 
-    public function page404(Request $req)
+    public function index(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'page404';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('index', $req, $res);
     }
 
-    public function show(Request $req)
+    public function page404(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'show';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('page404', $req, $res);
     }
 
-    public function showItem(Request $req)
+    public function show(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'showItem';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('show', $req, $res);
     }
 
-    public function new(Request $req)
+    public function showItem(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'new';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('showItem', $req, $res);
     }
 
-    public function create(Request $req)
+    public function new(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'create';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('new', $req, $res);
     }
 
-    public function edit(Request $req)
+    public function create(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'edit';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('create', $req, $res);
     }
 
-    public function update(Request $req)
+    public function edit(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'update';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('edit', $req, $res);
     }
 
-    public function destroy(Request $req)
+    public function update(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'destroy';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('update', $req, $res);
     }
 
-    public function delete(Request $req)
+    public function destroy(Request $req, Response $res)
     {
-        self::$callInfo = new stdClass();
-        self::$callInfo->action = 'delete';
-        self::$callInfo->urlParams = $req->getUrlParams();
+        $this->handle('destroy', $req, $res);
+    }
+
+    public function delete(Request $req, Response $res)
+    {
+        $this->handle('delete', $req, $res);
     }
 
 }
