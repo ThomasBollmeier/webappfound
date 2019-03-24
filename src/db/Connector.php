@@ -104,18 +104,18 @@ class Connector
         } else {
             throw new \Exception("Unknown DB type {$options['type']}.");
         }
-        
-        $dsn .= 'host='.$options['host'];
 
-        if (array_key_exists('port', $options)) {
-            $dsn .= ";port=".$options['port'];
+        $params = "";
+        foreach ($options as $key => $value) {
+            if ($key !== "user" && $key !== "password") {
+                if (strlen($params) > 0) {
+                    $params .= ";";
+                }
+                $params .= "$key=$value";
+            }
         }
 
-        $dsn .= ';dbname='.$options['dbname'];
-
-        if (array_key_exists('charset', $options)) {
-            $dsn .= ";charset=".$options['charset'];
-        }
+        $dsn .= $params;
 
         return $dsn;
     }
