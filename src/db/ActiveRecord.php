@@ -1,6 +1,6 @@
 <?php
 /*
-   Copyright 2016 Thomas Bollmeier <entwickler@tbollmeier.de>
+   Copyright 2016-2019 Thomas Bollmeier <developer@thomas-bollmeier.de>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -21,7 +21,15 @@ namespace tbollmeier\webappfound\db;
 abstract class ActiveRecord
 {
     const INDEX_NOT_IN_DB = -1;
-
+    // Association properties:
+    const ASSOC_TARGET_CLASS = "targetClass";
+    const ASSOC_IS_COMPOSITION = "isComposition";
+    const ASSOC_LINK_TABLE = "linkTable";
+    const ASSOC_SOURCE_ID_FIELD = "sourceIdField";
+    const ASSOC_TARGET_ID_FIELD = "targetIdField";
+    const ASSOC_ON_DELETE_CALLBACK = "onDeleteCallback";
+    const ASSOC_READ_ONLY = "readonly";
+   
     protected static $dbConn;
     protected $id;
     protected $_meta;
@@ -139,18 +147,20 @@ abstract class ActiveRecord
                                    $isComposition = false,
                                    $linkData = [])
     {
-        $linkTable = $linkData['linkTable'] ?? ''; // TODO name
-        $sourceIdField = $linkData['sourceIdField'] ?? 'source_id'; // TODO name
-        $targetIdField = $linkData['targetIdField'] ?? 'target_id'; // TODO name
-        $onDeleteCallback = $linkData['onDeleteCallback'] ?? null;
+        $linkTable = $linkData[self::ASSOC_LINK_TABLE] ?? '';
+        $sourceIdField = $linkData[self::ASSOC_SOURCE_ID_FIELD] ?? 'source_id';
+        $targetIdField = $linkData[self::ASSOC_TARGET_ID_FIELD] ?? 'target_id';
+        $onDeleteCallback = $linkData[self::ASSOC_ON_DELETE_CALLBACK] ?? null;
+        $readOnly = $linkData[self::ASSOC_READ_ONLY] ?? false;
 
         $this->_meta->assocs[$assocName] = [
-            'targetClass' => $targetClass,
-            'isComposition' => $isComposition,
-            'linkTable' => $linkTable,
-            'sourceIdField' => $sourceIdField,
-            'targetIdField' => $targetIdField,
-            'onDeleteCallback' => $onDeleteCallback
+            self::ASSOC_TARGET_CLASS => $targetClass,
+            self::ASSOC_IS_COMPOSITION => $isComposition,
+            self::ASSOC_LINK_TABLE => $linkTable,
+            self::ASSOC_SOURCE_ID_FIELD => $sourceIdField,
+            self::ASSOC_TARGET_ID_FIELD => $targetIdField,
+            self::ASSOC_ON_DELETE_CALLBACK => $onDeleteCallback,
+            self::ASSOC_READ_ONLY => $readOnly
         ];
 
         $this->_state->assocs[$assocName] = [];
@@ -222,6 +232,11 @@ abstract class ActiveRecord
                 $value : $convToDb($value);
 
         } elseif (isset($this->_meta->assocs[$name])) {
+           
+            $assocData = $this->_meta->assocs[$name];
+            if ($assocData[self::ASSOC_READ_ONLY]) {
+               return;
+            }
 
             if (!$this->_state->assocsLoaded) {
                 $this->loadAssociations();
@@ -283,10 +298,10 @@ abstract class ActiveRecord
     private function readAssocObjects($assocName)
     {
         $linkData = $this->_meta->assocs[$assocName];
-        $linkTable = $linkData['linkTable'];
-        $sourceId = $linkData['sourceIdField'];
-        $targetId = $linkData['targetIdField'];
-        $targetClass = $linkData['targetClass'];
+        $linkTable = $linkData[self::ASSOC_LINK_TABLE];
+        $sourceId = $linkData[self::ASSOC_SOURCE_ID_FIELD];
+        $targetId = $linkData[self::ASSOC_TARGET_ID_FIELD];
+        $targetClass = $linkData[self::ASSOC_TARGET_CLASS];
 
         $sql = $this->_meta->sqlBuilder->createSelectCommand(
             $linkTable,
@@ -355,12 +370,18 @@ abstract class ActiveRecord
     private function saveAssociation($assocName)
     {
         $linkData = $this->_meta->assocs[$assocName];
-        $linkTable = $linkData['linkTable'];
-        $sourceId = $linkData['sourceIdField'];
-        $targetId = $linkData['targetIdField'];
-        $targetClass = $linkData['targetClass'];
-        $isComposition = $linkData['isComposition'];
-        $onDeleteCallback = $linkData['onDeleteCallback'];
+       
+        if ($linkData[self::ASSOC_READ_ONLY]) {
+           // Read-only associations must not be saved
+           return;
+        }
+       
+        $linkTable = $linkData[self::ASSOC_LINK_TABLE];
+        $sourceId = $linkData[self::ASSOC_SOURCE_ID_FIELD];
+        $targetId = $linkData[self::ASSOC_TARGET_ID_FIELD];
+        $targetClass = $linkData[self::ASSOC_TARGET_CLASS];
+        $isComposition = $linkData[self::ASSOC_IS_COMPOSITION];
+        $onDeleteCallback = $linkData[self::ASSOC_ON_DELETE_CALLBACK];
 
         $existingObjects = $this->readAssocObjects($assocName);
         $existingIds = [];
