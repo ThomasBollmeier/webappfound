@@ -4,3 +4,8 @@ vendor
 nbproject
 composer.lock
 test/TestRouter.php
+.buildpath
+.project
+.settings/org.eclipse.php.core.prefs
+.settings/org.eclipse.wst.common.project.facet.core.xml
+.settings/org.eclipse.wst.validation.prefs
