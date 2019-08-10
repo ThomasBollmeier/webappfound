@@ -42,6 +42,10 @@ abstract class ActiveRecord
 
     public static function query($options = [])
     {
+        if ($options instanceof QueryOptions) {
+            $options = $options->toArray();
+        }
+        
         $params = $options['params'] ?? [];
         $model = new static();
         $sql = $model->_meta->sqlBuilder->createSelectCommand(
