@@ -1,6 +1,6 @@
 <?php
 /*
- Copyright 2016 Thomas Bollmeier <entwickler@tbollmeier.de>
+ Copyright 2019 Thomas Bollmeier <entwickler@tbollmeier.de>
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
