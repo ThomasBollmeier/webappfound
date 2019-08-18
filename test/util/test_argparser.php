@@ -18,29 +18,25 @@
 require_once '../../vendor/autoload.php';
 
 use tbollmeier\webappfound\util\ArgumentParser;
-use tbollmeier\webappfound\util\CmdOptionBuilder;
 
 
 $argParser = new ArgumentParser();
 
-$argParser->addOption(
-    (new CmdOptionBuilder())
-        ->addShort("o")
-        ->addLong("output")
-        ->setValueOptional()
-        ->build());
+$argParser->newOption()
+    ->short("o")
+    ->long("output")
+    ->valueOptional()
+    ->add();
 
-$argParser->addOption(
-    (new CmdOptionBuilder())
-    ->addShort("v")
-    ->build());
+$argParser->newOption()
+    ->short("v")
+    ->add();
 
-$argParser->addOption(
-    (new CmdOptionBuilder())
-    ->addShort("n")
-    ->addLong("name")
-    ->setValueRequired()
-    ->build());
+$argParser->newOption()
+    ->short("n")
+    ->long("name")
+    ->valueRequired()
+    ->add();
 
 list($args, $options) = $argParser->parse();
 

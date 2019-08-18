@@ -1,6 +1,6 @@
 <?php
 /*
- Copyright2019 Thomas Bollmeier <developer@thomas-bollmeier.de>
+ Copyright 2019 Thomas Bollmeier <developer@thomas-bollmeier.de>
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -20,44 +20,49 @@ namespace tbollmeier\webappfound\util;
 
 class CmdOptionBuilder
 {
+    private $argParser;
     private $short;
     private $long;
     private $valueMode;
     
-    public function __construct()
+    public function __construct(ArgumentParser $argParser)
     {
+        $this->argParser = $argParser;
         $this->short = "";
         $this->long = "";
         $this->valueMode = CmdOption::NO_VALUE;       
     }
     
-    public function addShort(string $short)
+    public function short(string $short)
     {
         $this->short = $short;
         return $this;
     }
     
-    public function addLong(string $long)
+    public function long(string $long)
     {
         $this->long = $long;
         return $this;
     }
     
-    public function setValueRequired()
+    public function valueRequired()
     {
         $this->valueMode = CmdOption::VALUE_REQUIRED;
         return $this;
     }
     
-    public function setValueOptional()
+    public function valueOptional()
     {
         $this->valueMode = CmdOption::VALUE_OPTIONAL;
         return $this;
     }
     
-    public function build() : CmdOption
+    public function add()
     {
-        return new CmdOption($this->short, $this->long, $this->valueMode);
+        $this->argParser->addOption(
+            new CmdOption($this->short, $this->long, $this->valueMode));
+        
+        return $this->argParser;
     }
     
 }
