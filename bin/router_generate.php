@@ -15,29 +15,11 @@
  limitations under the License.
  */
 
-spl_autoload_register(function ($qualifiedName) {
+ $autoloadFile = realpath(implode(DIRECTORY_SEPARATOR,
+    ["..", "..", "..", "autoload.php"]));
 
-    $nameParts = explode("\\", $qualifiedName);
+require_once $autoloadFile;
 
-    if ((count($nameParts) < 2 ||
-        $nameParts[0] !== "tbollmeier" ||
-        $nameParts[1] !== "webappfound")) {
-
-        return;
-
-    }
-
-    array_shift($nameParts);
-    array_shift($nameParts);
-
-    $path = array_merge([__DIR__, "..", "src"], $nameParts);
-    $path = implode(DIRECTORY_SEPARATOR, $path) . ".php";
-    $path = realpath($path);
-
-    require $path;
-
-});
-    
 
 use tbollmeier\webappfound\util\ArgumentParser;
 use tbollmeier\webappfound\codegen\GeneratorOptions;
