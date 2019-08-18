@@ -16,7 +16,7 @@
  */
 
  $autoloadFile = realpath(implode(DIRECTORY_SEPARATOR,
-    ["..", "..", "..", "autoload.php"]));
+    [__DIR__, "..", "..", "..", "autoload.php"]));
 
 require_once $autoloadFile;
 
