@@ -38,6 +38,36 @@ abstract class EntityDefinition
         return $this->tableName;
     }
     
+    public function getSqlBuilder()
+    {
+        return $this->sqlBuilder;
+    }
+    
+    public function isField($name) 
+    {
+        return array_key_exists($name, $this->fields);
+    }
+    
+    public function getField($name)
+    {
+        return $this->fields[$name];
+    }
+    
+    public function isAssociation($name)
+    {
+        return array_key_exists($name, $this->assocs);
+    }
+    
+    public function getAssociation($name)
+    {
+        return $this->assocs[$name];
+    }
+    
+    public function getAssociations()
+    {
+        return array_values($this->assocs);
+    }
+    
     public function newField($name)
     {
         return new FieldDefinition($this, $name);
@@ -58,6 +88,43 @@ abstract class EntityDefinition
     {
         $this->assocs[$assoc->getName()] = $assoc;
         return $this;
+    }
+    
+    public function query($options = [])
+    {
+        if ($options instanceof QueryOptions) {
+            $options = $options->toArray();
+        }
+        
+        $params = $options['params'] ?? [];
+        $sql = $this->sqlBuilder->createSelectCommand(
+            $this->tableName,
+            $options);
+        
+        return $this->queryCustom($sql, $params);
+    }
+    
+    public function queryCustom($sql, $params = [])
+    {
+        $objects = [];
+        
+        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        while ($row) {
+            $obj = $this->createEntity($row['id']);
+            $obj->setRowData($row);
+            $objects[] = $obj;
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+        $stmt->closeCursor();
+        
+        return $objects;
+    }
+    
+    public function createEntity($id=Entity::INDEX_NOT_IN_DB)
+    {
+        return new Entity($this, $id);
     }
     
 }

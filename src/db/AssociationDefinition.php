@@ -65,7 +65,7 @@ class AssociationDefinition
         return $this->onDeleteCallback;
     }
 
-    public function getReadonly()
+    public function isReadonly()
     {
         return $this->readonly;
     }

@@ -20,6 +20,18 @@ namespace tbollmeier\webappfound\db;
 
 class Connector
 {
+    private static $dbConn;
+    
+    public static function getDbConnection()
+    {
+        return self::$dbConn;
+    }
+    
+    public static function setDbConnection(\PDO $dbConnection)
+    {
+        self::$dbConn = $dbConnection;
+    }
+    
     /**
      * Create a connection from a configuration file:
      *
