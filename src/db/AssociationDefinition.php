@@ -22,7 +22,7 @@ class AssociationDefinition
 {
     private $entityDef;
     private $name;
-    private $targetClass;
+    private $targetEntityDef;
     private $isComposition;
     private $linkTable;
     private $sourceIdField;
@@ -35,9 +35,9 @@ class AssociationDefinition
         return $this->name;
     }
     
-    public function getTargetClass()
+    public function getTargetEntityDef()
     {
-        return $this->targetClass;
+        return $this->targetEntityDef;
     }
 
     public function isComposition()
@@ -110,11 +110,11 @@ class AssociationDefinition
         return $this->entityDef->addAssociation($this);
     }
 
-    public function __construct(EntityDefinition $entityDef, $name, $targetClass)
+    public function __construct(EntityDefinition $entityDef, $name, $targetEntityDef)
     {
         $this->entityDef = $entityDef;
         $this->name = $name;
-        $this->targetClass = $targetClass;
+        $this->targetEntityDef = $targetEntityDef;
         $this->linkTable = "";
         $this->sourceIdField = "";
         $this->targetIdField = "";

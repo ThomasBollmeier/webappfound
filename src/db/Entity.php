@@ -86,7 +86,6 @@ class Entity
         
         if ($this->entityDef->isField($name)) {
             
-            // It's a field
             $field = $this->entityDef->getField($name);
             $dbName = $field->getDbAlias();
             $dbValue = $this->state->row[$dbName] ?? null;
@@ -108,7 +107,6 @@ class Entity
                 $this->loadAssociations();
             }
             
-            // It's an association
             return $this->state->assocs[$name];
             
         } else {
@@ -123,11 +121,10 @@ class Entity
     {
         if ($this->entityDef->isField($name)) {
             
-            if (!$this->_state->loaded) {
+            if (!$this->state->loaded) {
                 $this->load();
             }
             
-            // It's a property
             $field = $this->entityDef->getField($name);
             $dbName = $field->getDbAlias();
             $convToDb = $field->getConvToDb();
@@ -148,6 +145,67 @@ class Entity
             $this->state->assocs[$name] = $value;
             
         }
+    }
+    
+    public function save()
+    {
+        $isNew = !$this->isInDb();
+        
+        $sql = $isNew ?
+        $this->createPreparedInsert() :
+        $this->createPreparedUpdate();
+        
+        $stmt = Connector::getDbConnection()->prepare($sql);
+        
+        $names = [];
+        $types = [];
+        $numCols = 0;
+        foreach ($this->entityDef->getFields as $field) {
+            $names[] = $field->getDbAlias();
+            $types[] = $field->getPdoType();
+            $numCols++;
+        }
+        
+        for ($col = 0; $col < $numCols; $col++) {
+            $name = $names[$col];
+            $stmt->bindParam(
+                ':' . $name,
+                $this->state->row[$name],
+                $types[$col]);
+        }
+        if ($this->id != self::INDEX_NOT_IN_DB) {
+            $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+        }
+        
+        if (!$stmt->execute()) {
+            throw new \PDOException($stmt->errorInfo()[2]);
+        }
+        
+        if ($isNew) {
+            $this->id = Connector::getDbConnection()->lastInsertId();
+        }
+        
+        $this->saveAssociations();
+    }
+    
+    public function delete()
+    {
+        if (!$this->isInDb()) {
+            return;
+        }
+        
+        $sql = $this->entityDef->getSqlBuilder()->createDeleteCommand(
+            $this->entityDef->getTableName());
+        
+        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $this->state->row = [];
+        
+        $this->deleteAssociations();
+        
+        $this->id = self::INDEX_NOT_IN_DB;
     }
     
     private function load()
@@ -199,7 +257,153 @@ class Entity
     
     private function readAssocObjects(AssociationDefinition $association)
     {
-        // TODO
+        $linkTable = $association->getLinkTable();
+        $sourceId = $association->getSourceIdField();
+        $targetId = $association->getTargetIdField();
+        $targetEntityDef = $association->getTargetEntityDef();
+        
+        $sql = $this->entityDef->getSqlBuilder()->createSelectCommand(
+            $linkTable,
+            [
+                'fields' => [$targetId],
+                'filter' => $sourceId . ' = :id'
+            ]);
+        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $objects = [];
+        
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        while ($row) {
+            $objects[] = $targetEntityDef->createEntity($row[$targetId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+        $stmt->closeCursor();
+        
+        return $objects;
+        
+    }
+
+    private function saveAssociations()
+    {
+        $associations = $this->entityDef->getAssociations();
+        
+        foreach ($associations as $association) {
+            $this->saveAssociation($association);
+        }   
+    }
+    
+    private function saveAssociation(AssociationDefinition $association)
+    {
+        if ($association->isReadonly()) {
+            // Read-only associations must not be saved
+            return;
+        }
+        
+        $linkTable = $association->getLinkTable();
+        $sourceId = $association->getSourceIdField();
+        $targetId = $association->getTargetIdField();
+        $targetEntityDef = $association->getTargetEntityDef();
+        $isComposition = $association->isComposition();
+        $onDeleteCallback = $association->getOnDeleteCallback();
+        
+        $existingObjects = $this->readAssocObjects($association);
+        $existingIds = [];
+        foreach ($existingObjects as $obj) {
+            $existingIds[$obj->getId()] = true;
+        }
+        
+        $assocObjs = $this->state->assocs[$association->getName()];
+        
+        foreach ($assocObjs as $obj) {
+            $objId = $obj->getId();
+            if (array_key_exists($objId, $existingIds)) {
+                // Delete orphaned links:
+                if (!$obj->isInDb()) {
+                    $this->deleteLink($linkTable, $sourceId, $targetId, $objId);
+                }
+                unset($existingIds[$objId]);
+            } else {
+                
+                // New association object...
+                // If the associated objects does not exist yet it must be
+                // saved now:
+                if (!$obj->isInDb()) {
+                    $obj->save();
+                }
+                
+                // Insert new link
+                $sql = $this->entityDef->getSqlBuilder()->createInsertCommand(
+                    $linkTable,
+                    [$sourceId, $targetId]);
+                
+                $stmt = Connector::getDbConnection()->prepare($sql);
+                $objId = $obj->getId();
+                $stmt->bindParam(':'.$sourceId, $this->id, \PDO::PARAM_INT);
+                $stmt->bindParam(':'.$targetId, $objId, \PDO::PARAM_INT);
+                $stmt->execute();
+            }
+        }
+        
+        // Delete unused links:
+        foreach (array_keys($existingIds) as $objId) {
+            $this->deleteLink($linkTable, $sourceId, $targetId, $objId);
+            if ($isComposition) {
+                $obj = $targetEntityDef->createEntity($objId);
+                $obj->delete();
+            } elseif ($onDeleteCallback !== null) {
+                $obj = $targetEntityDef->createEntity($objId);
+                call_user_func($onDeleteCallback, $obj);
+            }
+        }
+        
+    }
+    
+    private function deleteLink($linkTable,
+        $sourceId,
+        $targetId,
+        $objId)
+    {
+        $builder = $this->entityDef->getSqlBuilder();
+        $sql = $builder->createDeleteCommand(
+            $linkTable,
+            "$sourceId = :source_id AND $targetId = :target_id");
+        
+        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt->bindParam(':source_id', $this->id, \PDO::PARAM_INT);
+        $stmt->bindParam(':target_id', $objId, \PDO::PARAM_INT);
+        $stmt->execute();
+    }
+    
+    private function deleteAssociations()
+    {
+        foreach ($this->entityDef->getAssociations() as $association) {
+            $this->state->assocs[$association->getName()] = [];
+            $this->saveAssociation($association);
+        }
+    }
+        
+    private function createPreparedInsert()
+    {
+        $names = [];
+        foreach ($this->entityDef->getFields() as $field) {
+            $names[] = $field->getDbAlias();
+        }
+        
+        return $this->entityDef->getSqlBuilder()->createInsertCommand(
+            $this->entityDef->getTableName(), $names);
+    }
+    
+    private function createPreparedUpdate()
+    {
+        $names = [];
+        foreach ($this->entityDef->getFields() as $field) {
+            $names[] = $field->getDbAlias();
+        }
+        
+        return $this->entityDef->getSqlBuilder()->createUpdateCommand(
+            $this->entityDef->getTableName(), $names);
     }
     
 }

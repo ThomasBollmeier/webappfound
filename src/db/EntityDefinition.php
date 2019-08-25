@@ -53,6 +53,11 @@ abstract class EntityDefinition
         return $this->fields[$name];
     }
     
+    public function getFields()
+    {
+        return array_values($this->fields);
+    }
+    
     public function isAssociation($name)
     {
         return array_key_exists($name, $this->assocs);
