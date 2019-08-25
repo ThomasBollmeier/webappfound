@@ -47,16 +47,14 @@ class Entity
     {
         if ($this->id != self::INDEX_NOT_IN_DB) {
             
-            $builder = $this->entityDef->getSqlBuilder();
-            
-            $sql = $builder->createSelectCommand(
+            $sql = $this->sqlBuilder()->createSelectCommand(
                 $this->entityDef->getTableName(),
                 [
                     'fields' => ["id"],
                     'filter' => "id = :id"
                 ]);
             
-            $stmt = Connector::getDbConnection()->prepare($sql);
+            $stmt = $this->dbConn()->prepare($sql);
             $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
             
             $stmt->execute();
@@ -155,12 +153,12 @@ class Entity
         $this->createPreparedInsert() :
         $this->createPreparedUpdate();
         
-        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt = $this->dbConn()->prepare($sql);
         
         $names = [];
         $types = [];
         $numCols = 0;
-        foreach ($this->entityDef->getFields as $field) {
+        foreach ($this->entityDef->getFields() as $field) {
             $names[] = $field->getDbAlias();
             $types[] = $field->getPdoType();
             $numCols++;
@@ -182,7 +180,7 @@ class Entity
         }
         
         if ($isNew) {
-            $this->id = Connector::getDbConnection()->lastInsertId();
+            $this->id = $this->dbConn()->lastInsertId();
         }
         
         $this->saveAssociations();
@@ -194,10 +192,10 @@ class Entity
             return;
         }
         
-        $sql = $this->entityDef->getSqlBuilder()->createDeleteCommand(
+        $sql = $this->sqlBuilder()->createDeleteCommand(
             $this->entityDef->getTableName());
         
-        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt = $this->dbConn()->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
 
@@ -208,6 +206,16 @@ class Entity
         $this->id = self::INDEX_NOT_IN_DB;
     }
     
+    private function dbConn()
+    {
+        return Environment::getInstance()->dbConn;
+    }
+
+    private function sqlBuilder()
+    {
+        return Environment::getInstance()->sqlBuilder;
+    }
+    
     private function load()
     {
         $this->state->loaded = true;
@@ -216,10 +224,10 @@ class Entity
             return;
         }
         
-        $sql = $this->entityDef->getSqlBuilder()->createSelectCommand(
+        $sql =$this->sqlBuilder()->createSelectCommand(
             $this->entityDef->getTableName(),
             ['filter' => 'id = :id']);
-        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt = $this->dbConn()->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
         
@@ -262,13 +270,13 @@ class Entity
         $targetId = $association->getTargetIdField();
         $targetEntityDef = $association->getTargetEntityDef();
         
-        $sql = $this->entityDef->getSqlBuilder()->createSelectCommand(
+        $sql = $this->sqlBuilder()->createSelectCommand(
             $linkTable,
             [
                 'fields' => [$targetId],
                 'filter' => $sourceId . ' = :id'
             ]);
-        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt = $this->dbConn()->prepare($sql);
         $stmt->bindParam(':id', $this->id, \PDO::PARAM_INT);
         $stmt->execute();
         
@@ -334,11 +342,11 @@ class Entity
                 }
                 
                 // Insert new link
-                $sql = $this->entityDef->getSqlBuilder()->createInsertCommand(
+                $sql = $this->sqlBuilder()->createInsertCommand(
                     $linkTable,
                     [$sourceId, $targetId]);
                 
-                $stmt = Connector::getDbConnection()->prepare($sql);
+                $stmt = $this->dbConn()->prepare($sql);
                 $objId = $obj->getId();
                 $stmt->bindParam(':'.$sourceId, $this->id, \PDO::PARAM_INT);
                 $stmt->bindParam(':'.$targetId, $objId, \PDO::PARAM_INT);
@@ -365,12 +373,11 @@ class Entity
         $targetId,
         $objId)
     {
-        $builder = $this->entityDef->getSqlBuilder();
-        $sql = $builder->createDeleteCommand(
+        $sql = $this->sqlBuilder()->createDeleteCommand(
             $linkTable,
             "$sourceId = :source_id AND $targetId = :target_id");
         
-        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt = $this->dbConn()->prepare($sql);
         $stmt->bindParam(':source_id', $this->id, \PDO::PARAM_INT);
         $stmt->bindParam(':target_id', $objId, \PDO::PARAM_INT);
         $stmt->execute();
@@ -391,7 +398,7 @@ class Entity
             $names[] = $field->getDbAlias();
         }
         
-        return $this->entityDef->getSqlBuilder()->createInsertCommand(
+        return $this->sqlBuilder()->createInsertCommand(
             $this->entityDef->getTableName(), $names);
     }
     
@@ -402,7 +409,7 @@ class Entity
             $names[] = $field->getDbAlias();
         }
         
-        return $this->entityDef->getSqlBuilder()->createUpdateCommand(
+        return $this->sqlBuilder()->createUpdateCommand(
             $this->entityDef->getTableName(), $names);
     }
     

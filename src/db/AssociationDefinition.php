@@ -37,7 +37,7 @@ class AssociationDefinition
     
     public function getTargetEntityDef()
     {
-        return $this->targetEntityDef;
+        return new $this->targetEntityDef();
     }
 
     public function isComposition()
@@ -70,7 +70,7 @@ class AssociationDefinition
         return $this->readonly;
     }
 
-    public function setIsComposition($isComposition)
+    public function setIsComposition($isComposition=true)
     {
         $this->isComposition = $isComposition;
         return $this;
@@ -116,8 +116,8 @@ class AssociationDefinition
         $this->name = $name;
         $this->targetEntityDef = $targetEntityDef;
         $this->linkTable = "";
-        $this->sourceIdField = "";
-        $this->targetIdField = "";
+        $this->sourceIdField = "source_id";
+        $this->targetIdField = "target_id";
         $this->onDeleteCallback = null;
         $this->readonly = false;
     }

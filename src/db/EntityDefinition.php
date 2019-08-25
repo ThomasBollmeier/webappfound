@@ -23,26 +23,19 @@ abstract class EntityDefinition
     private $tableName;
     private $fields;
     private $assocs;
-    private $sqlBuilder;
     
-    public function __construct($tableName, SqlBuilder $sqlBuilder = null)
+    public function __construct($tableName)
     {
         $this->tableName = $tableName;
         $this->fields = [];
         $this->assocs = [];
-        $this->sqlBuilder = $sqlBuilder ?? new SqlBuilder();
     } 
     
     public function getTableName()
     {
         return $this->tableName;
     }
-    
-    public function getSqlBuilder()
-    {
-        return $this->sqlBuilder;
-    }
-    
+        
     public function isField($name) 
     {
         return array_key_exists($name, $this->fields);
@@ -84,9 +77,9 @@ abstract class EntityDefinition
         return $this;
     }
     
-    public function newAssociation($targetClass)
+    public function newAssociation($name, $targetEntityDef)
     {
-        return new AssociationDefinition($this, $targetClass);
+        return new AssociationDefinition($this, $name, $targetEntityDef);
     }
     
     function addAssociation(AssociationDefinition $assoc)
@@ -102,7 +95,7 @@ abstract class EntityDefinition
         }
         
         $params = $options['params'] ?? [];
-        $sql = $this->sqlBuilder->createSelectCommand(
+        $sql = Environment::getInstance()->sqlBuilder->createSelectCommand(
             $this->tableName,
             $options);
         
@@ -113,7 +106,7 @@ abstract class EntityDefinition
     {
         $objects = [];
         
-        $stmt = Connector::getDbConnection()->prepare($sql);
+        $stmt = Environment::getInstance()->dbConn->prepare($sql);
         $stmt->execute($params);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         while ($row) {
