@@ -89,6 +89,21 @@ class FieldDefinition
     {
         return $this->entityDef->addField($this);
     }
+    
+    public function getInitialDbValue() {
+        
+        switch ($this->pdoType) {
+            case \PDO::PARAM_BOOL:
+                return false;
+            case \PDO::PARAM_INT:
+                return 0;
+            case \PDO::PARAM_STR:
+                return "";
+            default:
+                return null;
+        }
+        
+    }
 
     public function __construct(EntityDefinition $entityDef, string $name)
     {

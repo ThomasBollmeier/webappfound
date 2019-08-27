@@ -31,13 +31,27 @@ class Entity
         $this->entityDef = $entityDef;
         $this->id = intval($id);
         
+        $this->initState();
+    }
+    
+    private function initState()
+    {
         $this->state = new \stdClass();
         $this->state->row = [];
         $this->state->assocs = [];
         $this->state->loaded = false;
         $this->state->assocsLoaded = false;
+        
+        foreach ($this->entityDef->getFields() as $field) {
+            $this->state->row[$field->getDbAlias()] = $field->getInitialDbValue();
+        }
+        
+        foreach ($this->entityDef->getAssociations() as $association) {
+            $this->state->assocs[$association->getName()] = [];
+        }
+        
     }
-    
+
     public function getId()
     {
         return $this->id;

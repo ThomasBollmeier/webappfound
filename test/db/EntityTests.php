@@ -107,6 +107,16 @@ class EntityTests extends PHPUnit_Framework_TestCase
             unset($this->dbConn);
         }
     }
+    
+    public function testInitialSave()
+    {
+        $person = $this->personDef->createEntity();
+        
+        $person->save();
+        
+        $id = $person->getId();
+        $this->assertFalse($id == db\Entity::INDEX_NOT_IN_DB);       
+    }
 
     public function testLoadAssociation() {
 
