@@ -120,6 +120,7 @@ class AssociationDefinition
         $this->targetIdField = "target_id";
         $this->onDeleteCallback = null;
         $this->readonly = false;
+        $this->isComposition = false;
     }
     
 }
