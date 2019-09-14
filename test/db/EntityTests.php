@@ -16,6 +16,7 @@
 */
 
 use tbollmeier\webappfound\db as db;
+use tbollmeier\webappfound\db\QueryOptions;
 
 
 class Person extends db\EntityDefinition
@@ -89,6 +90,12 @@ class EntityTests extends PHPUnit_Framework_TestCase
         $this->addHobby($person, "Laufen");
         $this->addHobby($person, "Programmieren");
 
+        $person->save();
+    
+        $person = $this->personDef->createEntity();
+        $person->firstName = "Theodore";
+        $person->name = "Ballmiller";
+        
         $person->save();
     }
 
@@ -191,6 +198,31 @@ class EntityTests extends PHPUnit_Framework_TestCase
 
         $this->assertEquals(count($hobbies), 2);
 
+    }
+    
+    public function testLimitOffset()
+    {
+        $options = (new QueryOptions())
+            ->setLimit(1)
+            ->setOrderBy("name");
+        
+        $people = $this->personDef->query($options);
+        $this->assertEquals(count($people), 1);
+        
+        $person = $people[0];
+        $this->assertEquals($person->name, "Ballmiller");
+        
+        $options = (new QueryOptions())
+            ->setLimit(1)
+            ->setOffset(1)
+            ->setOrderBy("name");
+        
+        $people = $this->personDef->query($options);
+        $this->assertEquals(count($people), 1);
+        
+        $person = $people[0];
+        $this->assertEquals($person->name, "Mustermann");
+        
     }
 
 }

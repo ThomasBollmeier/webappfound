@@ -6,6 +6,8 @@ class QueryOptions
     public $fields;
     public $filter;
     public $orderBy;
+    public $limit;
+    public $offset;
     public $params;
     
     public function __construct()
@@ -13,6 +15,8 @@ class QueryOptions
         $this->fields = [];
         $this->filter = "";
         $this->orderBy = "";
+        $this->limit = -1;
+        $this->offset = -1;
         $this->params = [];
     }
     
@@ -31,6 +35,18 @@ class QueryOptions
     public function setOrderBy(string $orderBy)
     {
         $this->orderBy = $orderBy;
+        return $this;
+    }
+    
+    public function setLimit(int $limit)
+    {
+        $this->limit = $limit;
+        return $this;
+    }
+    
+    public function setOffset(int $offset)
+    {
+        $this->offset = $offset;
         return $this;
     }
     
@@ -54,6 +70,14 @@ class QueryOptions
         
         if (!empty($this->orderBy)) {
             $ret["orderBy"] = $this->orderBy;
+        }
+        
+        if ($this->limit >= 0) {
+            $ret["limit"] = $this->limit;
+        }
+        
+        if ($this->offset >= 0) {
+            $ret["offset"] = $this->offset;
         }
         
         if (count($this->params) > 0) {

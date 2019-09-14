@@ -70,7 +70,17 @@ class SqlBuilder
         if (!empty($orderBy)) {
             $sql .= ' ORDER BY ' . $orderBy;
         }
+        
+        if (array_key_exists("limit", $options)) {
+            $limit = $options["limit"];
+            $sql .= " LIMIT $limit ";
+        }
 
+        if (array_key_exists("offset", $options)) {
+            $offset = $options["offset"];
+            $sql .= " OFFSET $offset ";
+        }
+        
         return $sql;
     }
 }
