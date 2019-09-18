@@ -168,7 +168,7 @@ class Entity
         $assocObjects = $this->state->assocs[$assocName];
         
         foreach($assocObjects as $assocObject) {
-            if ($assocObbject->getId() === $object->getId()) {
+            if ($assocObject->getId() === $object->getId()) {
                 return true;
             }
         }
