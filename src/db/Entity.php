@@ -158,6 +158,23 @@ class Entity
             
         }
     }
+ 
+    public function isAssociated(string $assocName, Entity $object)
+    {
+        if (!$this->state->assocsLoaded) {
+            $this->loadAssociations();
+        }
+
+        $assocObjects = $this->state->assocs[$assocName];
+        
+        foreach($assocObjects as $assocObject) {
+            if ($assocObbject->getId() === $object->getId()) {
+                return true;
+            }
+        }
+     
+        return false;
+    }
     
     public function save()
     {
