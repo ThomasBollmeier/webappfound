@@ -175,7 +175,30 @@ class Entity
      
         return false;
     }
-    
+ 
+    public function associate(string $assocName, Entity $object)
+    {
+        if (!$this->state->assocsLoaded) {
+            $this->loadAssociations();
+        }
+
+        $assocObjects = $this->state->assocs[$assocName];
+        $assocObjects[] = $object;
+        $this->state->assocs[$name] = $assocObjects;
+    }
+
+    public function dissociate(string $assocName, Entity $object)
+    {
+        if (!$this->state->assocsLoaded) {
+            $this->loadAssociations();
+        }
+
+        $newAssocObjects = array_filter($this->state->assocs[$assocName], function ($obj) use ($object) {
+            return $obj->getId() != $object->getId();
+        }); 
+        $this->state->assocs[$name] = $newAssocObjects;
+    }
+
     public function save()
     {
         $isNew = !$this->isInDb();
