@@ -184,7 +184,7 @@ class Entity
 
         $assocObjects = $this->state->assocs[$assocName];
         $assocObjects[] = $object;
-        $this->state->assocs[$name] = $assocObjects;
+        $this->state->assocs[$assocName] = $assocObjects;
     }
 
     public function dissociate(string $assocName, Entity $object)
@@ -196,7 +196,7 @@ class Entity
         $newAssocObjects = array_filter($this->state->assocs[$assocName], function ($obj) use ($object) {
             return $obj->getId() != $object->getId();
         }); 
-        $this->state->assocs[$name] = $newAssocObjects;
+        $this->state->assocs[$assocName] = $newAssocObjects;
     }
 
     public function save()
