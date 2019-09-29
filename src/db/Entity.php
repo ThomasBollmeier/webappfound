@@ -193,9 +193,9 @@ class Entity
             $this->loadAssociations();
         }
 
-        $newAssocObjects = array_filter($this->state->assocs[$assocName], function ($obj) use ($object) {
+        $newAssocObjects = array_values(array_filter($this->state->assocs[$assocName], function ($obj) use ($object) {
             return $obj->getId() != $object->getId();
-        }); 
+        })); 
         $this->state->assocs[$assocName] = $newAssocObjects;
     }
 
