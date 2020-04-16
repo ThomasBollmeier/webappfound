@@ -25,6 +25,7 @@ class FieldDefinition
     private $name;
     private $dbAlias;
     private $pdoType;
+    private $sqlType;
     /*
      * convToDb and convFromDb are callback functions that
      * are used to implement a custom data conversion while
@@ -51,6 +52,11 @@ class FieldDefinition
         return $this->pdoType;
     }
 
+    public function getSqlType()
+    {
+        return $this->sqlType;
+    }
+
     public function getConvToDb()
     {
         return $this->convToDb;
@@ -70,6 +76,12 @@ class FieldDefinition
     public function setPdoType($pdoType)
     {
         $this->pdoType = $pdoType;
+        return $this;
+    }
+
+    public function setSqlType(SqlType $sqlType)
+    {
+        $this->sqlType = $sqlType;
         return $this;
     }
 
@@ -111,6 +123,7 @@ class FieldDefinition
         $this->name = $name;
         $this->dbAlias = $name;
         $this->pdoType = \PDO::PARAM_STR;
+        $this->sqlType = SqlType::makeVarChar();
         $this->convToDb = null;
         $this->convFromDb = null;
     } 
