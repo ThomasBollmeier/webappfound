@@ -29,6 +29,7 @@ class EntityRelationshipModel
     public function addEntityDef(EntityDefinition $entityDef)
     {
         $this->entityDefs[] = $entityDef;
+        return $this;
     }
 
     /**
@@ -45,6 +46,17 @@ class EntityRelationshipModel
             $fields = $entityDef->getFields();
             $ret[$tableName] = $this->createTableDef($tableName, $fields);
 
+            $assocDefs = $entityDef->getAssociations();
+
+            foreach ($assocDefs as $assocDef) {
+                $linkTableName = $assocDef->getLinkTable();
+                if (array_key_exists($linkTableName, $ret)) {
+                    continue;
+                }
+                $linkTable = $this->createLinkTableDef($assocDef);
+                $ret[$linkTableName] = $linkTable;
+            }
+
         }
 
         return $ret;
@@ -59,6 +71,16 @@ class EntityRelationshipModel
         foreach ($fields as $field) {
             $ret->addDataField($field->getDbAlias(), $field->getSqlType());
         }
+        return $ret;
+    }
+
+    private function createLinkTableDef(AssociationDefinition $assocDef)
+    {
+        $ret = new TableDefinition($assocDef->getLinkTable());
+
+        $ret->addKeyField($assocDef->getSourceIdField(), SqlType::makeInt());
+        $ret->addKeyField($assocDef->getTargetIdField(), SqlType::makeInt());
+
         return $ret;
     }
 
