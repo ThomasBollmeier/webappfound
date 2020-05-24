@@ -17,8 +17,92 @@
 
 namespace tbollmeier\webappfound\db;
 
-class SqlBuilder
+
+use Exception;
+
+class SqlBuilder implements ISqlBuilder
 {
+    public function createCreateTableCommand(TableDefinition $tableDef)
+    {
+        $sql = "CREATE TABLE IF NOT EXISTS " . $tableDef->getName() . " (\n";
+        foreach ($tableDef->getKeyFields() as $keyField) {
+            $sql .= "\t" . $this->createFieldDefLine($keyField) . ",\n";
+        }
+        foreach ($tableDef->getDataFields() as $dataField) {
+            $sql .= "\t" . $this->createFieldDefLine($dataField) . ",\n";
+        }
+        $sql .= "\t" . $this->createPrimaryKeyLine($tableDef) . "\n";
+        $sql .= ")";
+
+        return $sql;
+    }
+
+    private function createFieldDefLine(TableField $field)
+    {
+        $line = $field->getName() . " ";
+
+        $sqlType = $field->getSqlType();
+
+        switch ($sqlType->getTypeCode()) {
+            case SqlType::BOOL:
+                $line .= "TINYINT(1)";
+                break;
+            case SqlType::INT:
+                $line .= "INTEGER";
+                break;
+            case SqlType::FLOAT:
+                $digits = $sqlType->getDigits();
+                $decimals = $sqlType->getDecimals();
+                $line .= "DOUBLE PRECISION(" . $digits . "," . $decimals .")";
+                break;
+            case SqlType::VARCHAR:
+                $length = $sqlType->getLength();
+                if ($length != 0) {
+                    $line .= "VARCHAR(" . $length . ")";
+                } else {
+                    $line .= "MEDIUMTEXT";
+                }
+                break;
+            case SqlType::DATE:
+                $line .= "DATE";
+                break;
+            case SqlType::TIME:
+                $line .= "TIME";
+                break;
+            case SqlType::DATETIME:
+                $line .= "DATETIME";
+                break;
+            default:
+                throw new Exception("Unknown SQL Type");
+        }
+
+        if (!$field->isNullable()) {
+            $line .= " NOT NULL";
+        }
+
+        if ($field->isAutoIncrement()) {
+            $line .= " AUTO_INCREMENT";
+        }
+
+        return $line;
+    }
+
+    private function createPrimaryKeyLine(TableDefinition $tableDef)
+    {
+        $line = "PRIMARY KEY (";
+        $first = true;
+        foreach ($tableDef->getKeyFields() as $keyField) {
+            if ($first) {
+                $first = false;
+            } else {
+                $line .= ", ";
+            }
+            $line .= $keyField->getName();
+        }
+        $line .= ")";
+        return $line;
+    }
+
     public function createInsertCommand($tableName, $columnNames)
     {
         $namesStr = implode(', ', $columnNames);

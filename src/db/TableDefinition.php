@@ -31,14 +31,38 @@ class TableDefinition
         $this->dataFields = [];
     }
 
-    public function addKeyField(string $name, SqlType $sqlType)
+    public function addKeyField(TableField $field)
     {
-        $this->keyFields[] = [$name, $sqlType];
+        $this->keyFields[] = $field;
     }
 
-    public function addDataField(string $name, SqlType $sqlType)
+    public function addDataField(TableField $field)
     {
-        $this->dataFields[] = [$name, $sqlType];
+        $this->dataFields[] = $field;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    /**
+     * @return array
+     */
+    public function getKeyFields(): array
+    {
+        return $this->keyFields;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDataFields(): array
+    {
+        return $this->dataFields;
     }
 
 }

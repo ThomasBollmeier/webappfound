@@ -57,7 +57,7 @@ class SqlType
 
     public static function makeVarChar(int $length = 0)
     {
-        return new SqlTypeFloat($length);
+        return new SqlTypeVarChar($length);
     }
 
     public static function makeDate()

@@ -66,10 +66,20 @@ class EntityRelationshipModel
     {
         $ret = new TableDefinition($tableName);
 
-        $ret->addKeyField("id", SqlType::makeInt());
+        $keyField = new TableField(
+            "id",
+            SqlType::makeInt(),
+            false,
+            true);
+        $ret->addKeyField($keyField);
 
         foreach ($fields as $field) {
-            $ret->addDataField($field->getDbAlias(), $field->getSqlType());
+            $dataField = new TableField(
+                $field->getDbAlias(),
+                $field->getSqlType(),
+                false,
+                false);
+            $ret->addDataField($dataField);
         }
         return $ret;
     }
@@ -78,8 +88,19 @@ class EntityRelationshipModel
     {
         $ret = new TableDefinition($assocDef->getLinkTable());
 
-        $ret->addKeyField($assocDef->getSourceIdField(), SqlType::makeInt());
-        $ret->addKeyField($assocDef->getTargetIdField(), SqlType::makeInt());
+        $firstField = new TableField(
+            $assocDef->getSourceIdField(),
+            SqlType::makeInt(),
+            false,
+            false);
+        $ret->addKeyField($firstField);
+
+        $secondField = new TableField(
+            $assocDef->getTargetIdField(),
+            SqlType::makeInt(),
+            false,
+            false);
+        $ret->addKeyField($secondField);
 
         return $ret;
     }
