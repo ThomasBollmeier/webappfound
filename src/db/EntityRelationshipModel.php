@@ -33,6 +33,23 @@ class EntityRelationshipModel
     }
 
     /**
+     * Get entity definition by entity definition name
+     *
+     * @param string $entityDefName
+     * @return EntityDefinition | null
+     */
+    public function getEntityDef(string $entityDefName)
+    {
+        foreach ($this->entityDefs as $entityDef) {
+            if (get_class($entityDef) == $entityDefName) {
+                return $entityDef;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Return table definitions that represent the
      * model in the database
      */
