@@ -26,9 +26,10 @@ class EntityRelationshipModel
         $this->entityDefs = [];
     }
 
-    public function addEntityDef(EntityDefinition $entityDef)
+    public function addEntityDef(EntityDefinition $entityDef, $name="")
     {
-        $this->entityDefs[] = $entityDef;
+        $key = !empty($name) ? $name : get_class($entityDef);
+        $this->entityDefs[$key] = $entityDef;
         return $this;
     }
 
@@ -40,13 +41,19 @@ class EntityRelationshipModel
      */
     public function getEntityDef(string $entityDefName)
     {
-        foreach ($this->entityDefs as $entityDef) {
-            if (get_class($entityDef) == $entityDefName) {
-                return $entityDef;
-            }
-        }
+        return array_key_exists($entityDefName, $this->entityDefs) ?
+            $this->entityDefs[$entityDefName] : null;
+    }
 
-        return null;
+    /**
+     * Magic method to retrieve entity definition by $model-><entityDefName>
+     *
+     * @param string $entityDefName
+     * @return EntityDefinition|null
+     */
+    public function __get(string $entityDefName)
+    {
+        return $this->getEntityDef($entityDefName);
     }
 
     /**
@@ -57,7 +64,7 @@ class EntityRelationshipModel
     {
         $ret = [];
 
-        foreach ($this->entityDefs as $entityDef) {
+        foreach (array_values($this->entityDefs) as $entityDef) {
 
             $tableName = $entityDef->getTableName();
             $fields = $entityDef->getFields();

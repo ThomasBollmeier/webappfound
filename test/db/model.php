@@ -57,7 +57,7 @@ class Model extends db\EntityRelationshipModel
     public function __construct()
     {
         parent::__construct();
-        $this->addEntityDef(new Person());
-        $this->addEntityDef(new Hobby());
+        $this->addEntityDef(new Person(), "person");
+        $this->addEntityDef(new Hobby(), "hobby");
     }
 }

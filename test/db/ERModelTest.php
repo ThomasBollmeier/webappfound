@@ -33,4 +33,14 @@ class ERModelTest extends PHPUnit_Framework_TestCase
             echo $sql . "\n\n";
         }
     }
+
+    public function testEntityDef()
+    {
+        $model = new \demo\Model();
+
+        $person = $model->person;
+        $this->assertNotNull($person);
+        $this->assertTrue($person instanceof demo\Person);
+
+    }
 }
